@@ -2,7 +2,7 @@
 
 **Derolas Staking and Donation Auction**
 
-![Github Actions](https://github.com/foundry-rs/forge-template/workflows/CI/badge.svg)
+![Github Actions](https://github.com/StationsStation/derolas_staking/workflows/CI/badge.svg)
 
 ## Getting Started
 
