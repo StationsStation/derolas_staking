@@ -1,2 +1,9 @@
 cache/
 out/
+
+# misc
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
