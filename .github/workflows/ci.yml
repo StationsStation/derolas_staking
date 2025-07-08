@@ -1,25 +1,41 @@
 name: CI
+
 on:
   push:
     branches:
+      - main
       - master
-  pull_request:
-
-env:
-  FOUNDRY_PROFILE: ci
 
 jobs:
-  run-ci:
+  debug:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Say hello
+        run: echo "Hello"
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+# name: CI
+# on:
+#   push:
+#     branches:
+#       - main
+#       - master
+#   pull_request:
 
-      - name: Install deps
-        run: forge install
+# env:
+#   FOUNDRY_PROFILE: ci
+
+# jobs:
+#   run-ci:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Install Foundry
+#         uses: foundry-rs/foundry-toolchain@v1
+
+#       - name: Install deps
+#         run: forge install
 
       # - name: Check gas snapshots
       #   run: forge snapshot --check
