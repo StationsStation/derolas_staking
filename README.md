@@ -1,6 +1,6 @@
-# <h1 align="center"> Forge Template </h1>
+# <h1 align="center"> Derolas Staking</h1>
 
-**Template repository for getting started quickly with Foundry projects**
+**Derolas Staking and Donation Auction**
 
 ![Github Actions](https://github.com/foundry-rs/forge-template/workflows/CI/badge.svg)
 
