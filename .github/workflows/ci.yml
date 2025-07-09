@@ -20,9 +20,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - name: Setup Node
         uses: actions/setup-node@v3
@@ -40,6 +44,9 @@ jobs:
 
       - name: Run linters
         run: make lint
+
+      #- name: Check gas snapshots
+      #  run: forge snapshot --check
 
       - name: Run tests
         run: make tests
