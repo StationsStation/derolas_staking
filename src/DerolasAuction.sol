@@ -11,13 +11,8 @@ interface IBalancerRouter {
     /// @param amountsIn Amounts of tokens to donate.
     /// @param wethIsEth Whether WETH is ETH.
     /// @param userData User data.
-    function donate(
-        address pool,
-        uint256[] memory amountsIn,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable;
-    
+    function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
+
     /// @dev Gets permit2 address.
     /// @return permit2 address.
     function getPermit2() external view returns (address);
@@ -63,8 +58,14 @@ interface IStaking {
     /// @return eligibleServiceIds Set of reward-eligible service Ids.
     /// @return eligibleServiceRewards Corresponding set of reward-eligible service rewards.
     /// @return evictServiceIds Evicted service Ids.
-    function checkpoint() external returns (uint256[] memory serviceIds, uint256[] memory eligibleServiceIds,
-        uint256[] memory eligibleServiceRewards, uint256[] memory evictServiceIds);
+    function checkpoint()
+        external
+        returns (
+            uint256[] memory serviceIds,
+            uint256[] memory eligibleServiceIds,
+            uint256[] memory eligibleServiceRewards,
+            uint256[] memory evictServiceIds
+        );
 
     /// @dev Gets activity checker address.
     /// @return Activity checker address.
@@ -78,13 +79,13 @@ interface IStaking {
 /// @dev Epoch point struct.
 /// @notice Stores information about a specific epoch
 struct EpochPoint {
-    uint256 availableRewards;    // Total rewards available for this epoch
-    uint256 totalDonated;        // Total amount donated in this epoch
-    uint256 totalClaimed;        // Total amount claimed in this epoch
-    uint256 length;              // Length of this epoch in seconds
-    uint256 maxCheckpointDelay;  // Maximum allowed delay between checkpoints
-    uint256 minDonation;         // Minimum donation amount for this epoch
-    uint256 endTime;             // End time of this epoch
+    uint256 availableRewards; // Total rewards available for this epoch
+    uint256 totalDonated; // Total amount donated in this epoch
+    uint256 totalClaimed; // Total amount claimed in this epoch
+    uint256 length; // Length of this epoch in seconds
+    uint256 maxCheckpointDelay; // Maximum allowed delay between checkpoints
+    uint256 minDonation; // Minimum donation amount for this epoch
+    uint256 endTime; // End time of this epoch
 }
 
 /// @dev Game state struct.
@@ -114,13 +115,22 @@ contract DerolasAuction {
     event OwnerUpdated(address indexed owner);
     event DonationReceived(address indexed donatorAddress, uint256 indexed amount);
     event TopUpIncentiveReceived(uint256 indexed amount);
-    event AuctionEnded(uint256 indexed epochCounter, uint256 indexed totalEpochDonations,
-        uint256 indexed totalEpochClaimed, uint256 availableRewards);
+    event AuctionEnded(
+        uint256 indexed epochCounter,
+        uint256 indexed totalEpochDonations,
+        uint256 indexed totalEpochClaimed,
+        uint256 availableRewards
+    );
     event UnclaimedRewardsDonated(uint256 indexed amount);
     event RewardsClaimed(address indexed donatorAddress, uint256 indexed amount);
     event StakingInstanceUpdated(address indexed stakingInstance);
-    event ParamsUpdated(uint256 indexed nextEpoch, uint256 availableRewards, uint256 epochLength,
-        uint256 maxCheckpointDelay, uint256 minDonation);
+    event ParamsUpdated(
+        uint256 indexed nextEpoch,
+        uint256 availableRewards,
+        uint256 epochLength,
+        uint256 maxCheckpointDelay,
+        uint256 minDonation
+    );
 
     // Assets in pool
     uint256 public immutable assetsInPool;
@@ -143,7 +153,7 @@ contract DerolasAuction {
     address public owner;
     // Params update request status
     bool public paramsUpdateRequested;
-    
+
     // Reentrancy lock
     uint256 internal _locked = 1;
 
@@ -199,14 +209,19 @@ contract DerolasAuction {
         }
 
         // TODO This must be resolved to not revert
-        require(IERC20(incentiveTokenAddress).balanceOf(address(this)) >= unclaimedAmount, "Not enough incentive balance to donate");
+        require(
+            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= unclaimedAmount,
+            "Not enough incentive balance to donate"
+        );
 
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[incentiveTokenIndex] = unclaimedAmount;
 
         IERC20(incentiveTokenAddress).approve(permit2, 0);
         IERC20(incentiveTokenAddress).approve(permit2, unclaimedAmount);
-        IPermit2(permit2).approve(incentiveTokenAddress, balancerRouter, uint160(unclaimedAmount), uint48(block.timestamp + 1 days));
+        IPermit2(permit2).approve(
+            incentiveTokenAddress, balancerRouter, uint160(unclaimedAmount), uint48(block.timestamp + 1 days)
+        );
         IBalancerRouter(balancerRouter).donate(poolId, amountsIn, true, "");
 
         emit UnclaimedRewardsDonated(unclaimedAmount);
@@ -223,7 +238,10 @@ contract DerolasAuction {
         require(block.timestamp > epochPoints[claimEpoch].endTime + epochPoints[curEpoch].length, "Epoch not over");
 
         uint256 lastStakingCheckpointDelay = block.timestamp - IStaking(stakingInstance).tsCheckpoint();
-        require(lastStakingCheckpointDelay <= epochPoints[curEpoch].maxCheckpointDelay, "Staking epoch end time difference overflow");
+        require(
+            lastStakingCheckpointDelay <= epochPoints[curEpoch].maxCheckpointDelay,
+            "Staking epoch end time difference overflow"
+        );
 
         _donateUnclaimedRewards(claimEpoch);
 
@@ -240,8 +258,12 @@ contract DerolasAuction {
 
         IStaking(stakingInstance).checkpoint();
 
-        emit AuctionEnded(curEpoch, epochPoints[curEpoch].totalDonated, epochPoints[claimEpoch].totalClaimed,
-            epochPoints[curEpoch].availableRewards);
+        emit AuctionEnded(
+            curEpoch,
+            epochPoints[curEpoch].totalDonated,
+            epochPoints[claimEpoch].totalClaimed,
+            epochPoints[curEpoch].availableRewards
+        );
 
         _locked = 1;
     }
@@ -348,8 +370,10 @@ contract DerolasAuction {
     function estimateTicketPercentage(uint256 donation) external view returns (uint256) {
         uint256 curEpoch = currentEpoch;
         require(donation >= epochPoints[curEpoch].minDonation, "Minimum donation not met");
-        require(IERC20(incentiveTokenAddress).balanceOf(address(this)) >= epochPoints[curEpoch].availableRewards,
-            "Not enough rewards to play the game");
+        require(
+            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= epochPoints[curEpoch].availableRewards,
+            "Not enough rewards to play the game"
+        );
 
         uint256 totalEpochDonations = epochPoints[curEpoch].totalDonated;
         if (totalEpochDonations == 0) {
@@ -367,8 +391,10 @@ contract DerolasAuction {
 
         uint256 curEpoch = currentEpoch;
         require(msg.value >= epochPoints[curEpoch].minDonation, "Donation amount is less than the minimum donation");
-        require(IERC20(incentiveTokenAddress).balanceOf(address(this)) >= epochPoints[curEpoch].availableRewards,
-            "Not enough rewards to play the game");
+        require(
+            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= epochPoints[curEpoch].availableRewards,
+            "Not enough rewards to play the game"
+        );
 
         require(epochToDonations[curEpoch][msg.sender] == 0, "Already donated this epoch");
 
@@ -479,9 +505,8 @@ contract DerolasAuction {
         }
 
         state.canPlayGame = (
-            state.userCurrentDonation == 0 &&
-            state.incentiveBalance >= state.epochRewards &&
-            block.timestamp < state.epochEndTime
+            state.userCurrentDonation == 0 && state.incentiveBalance >= state.epochRewards
+                && block.timestamp < state.epochEndTime
         );
     }
 
@@ -498,11 +523,12 @@ contract DerolasAuction {
     /// @param curNonces Current service multisig set of a single nonce.
     /// @param lastNonces Last service multisig set of a single nonce.
     /// @return ratioPass True, if the liveness ratio passes the check.
-    function isRatioPass(
-        uint256[] memory curNonces,
-        uint256[] memory lastNonces,
-        uint256
-    ) external view virtual returns (bool ratioPass) {
+    function isRatioPass(uint256[] memory curNonces, uint256[] memory lastNonces, uint256)
+        external
+        view
+        virtual
+        returns (bool ratioPass)
+    {
         if (curNonces[0] > lastNonces[0]) {
             ratioPass = true;
         }

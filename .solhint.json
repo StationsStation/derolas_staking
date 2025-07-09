@@ -9,7 +9,6 @@
     "const-name-snakecase": "off",
     "avoid-suicide": "error",
     "avoid-sha3": "warn",
-    "var-name-mixedcase": "off",
-    "mark-callable-contracts": "off"
+    "var-name-mixedcase": "off"
   }
 }
