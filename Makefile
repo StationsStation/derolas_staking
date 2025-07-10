@@ -26,7 +26,7 @@ build:
 	forge build
 
 tests:
-	forge test -vvvv \
+	forge coverage -vvvv \
 		--fork-url https://mainnet.base.org
 
 ci:

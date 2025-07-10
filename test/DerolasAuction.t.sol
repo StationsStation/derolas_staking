@@ -62,13 +62,50 @@ contract TestDerolasAuctionContract is Test {
         assertEq(gameState.incentiveBalance, topUpAmount, "Available rewards should match after top-up");
     }
 
+    function testGetTotalUnclaimed() public view {
+        // Check that the total unclaimed incentives are zero initially
+        uint256 totalUnclaimed = c.getTotalUnclaimed();
+        assertEq(totalUnclaimed, 0, "Total unclaimed incentives should be zero initially");
+    }
+
+    function testGetEpochProgress() public view {
+        // Check that the epoch progress is zero initially
+        uint256 epochProgress = c.getEpochProgress();
+        assertEq(epochProgress, 0, "Epoch progress should be zero initially");
+    }
+
+    function testGetSecondsSinceEpochEnd() public view {
+        // Check that the seconds since epoch end is zero initially
+        uint256 secondsSinceEpochEnd = c.getSecondsSinceEpochEnd();
+        assertEq(secondsSinceEpochEnd, 0, "Seconds since epoch end should be zero initially");
+    }
+
+    function testGetCurrentShare() public view {
+        // Check that the current share is zero initially
+        uint256 currentShare = c.getCurrentShare(address(this));
+        assertEq(currentShare, 0, "Current share should be zero initially");
+    }
+
+    function testEstimateTicketPercentage() public {
+        // Check that the estimated ticket percentage from a donation works correctly
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        uint256 estimatedPercentage = c.estimateTicketPercentage(minimumDonation);
+        assertEq(estimatedPercentage, 1e18, "Estimated ticket percentage should be 100% as no donations exist yet");
+    }
+
+    function testClaimable() public {
+        // Check that the claimable incentives are zero initially
+        uint256 claimableIncentives = c.claimable(address(this));
+        assertEq(claimableIncentives, 0, "Claimable incentives should be zero initially");
+    }
+
     function testDonateWithIncentives() public {
         // Simulate a successful donation after topping up incentives
         this.testTopupIncentivesBalance(); // Ensure incentives are topped up
 
-        c.donate{value: topUpAmount}();
+        c.donate{value: minimumDonation}();
         // Verify the donation was successful
         GameState memory gameState = c.getGameState(whaleAddress);
-        assertEq(gameState.incentiveBalance, topUpAmount, "Incentive balance should match after donation");
+        assertEq(gameState.totalDonated, minimumDonation, "Total donated should match");
     }
 }

@@ -421,6 +421,9 @@ contract DerolasAuction {
     function getCurrentShare(address account) external view returns (uint256) {
         uint256 curEpoch = currentEpoch;
         uint256 donation = epochToDonations[curEpoch][account];
+        if (donation == 0) {
+            return 0; // No donation, no share
+        }
         return (donation * 1e18) / epochPoints[curEpoch].totalDonated;
     }
 
