@@ -6,23 +6,28 @@ fmt:
 	forge fmt
 	forge fmt --check
 	yarn run solhint \
-		--config .solhint.json src/**/*.sol \
+		--config .solhint.json \
 		--fix \
 		--noPrompt \
 		--noPoster \
-		--quiet
+		--quiet \
+		src/**/*.sol \
+		test/**/*.sol
 
 lint:
 	yarn run solhint \
-		--config .solhint.json src/**/*.sol \
+		--config .solhint.json \
 		--quiet \
-		--noPrompt
+		--noPrompt \
+		src/**/*.sol \
+		test/**/*.sol
 
 build:
 	forge build
 
 tests:
-	forge test
+	forge coverage -vvvv \
+		--fork-url https://mainnet.base.org
 
 ci:
 	act

@@ -94,7 +94,7 @@ struct GameState {
     uint256 epochLength;
     uint256 currentEpoch;
     uint256 epochEndTime;
-    uint256 minimalDonation;
+    uint256 minimumDonation;
     uint256 secondsRemaining;
     uint256 epochRewards;
     uint256 totalDonated;
@@ -421,6 +421,9 @@ contract DerolasAuction {
     function getCurrentShare(address account) external view returns (uint256) {
         uint256 curEpoch = currentEpoch;
         uint256 donation = epochToDonations[curEpoch][account];
+        if (donation == 0) {
+            return 0; // No donation, no share
+        }
         return (donation * 1e18) / epochPoints[curEpoch].totalDonated;
     }
 
@@ -474,7 +477,7 @@ contract DerolasAuction {
 
         state.epochLength = ep.length;
         state.currentEpoch = curEpoch;
-        state.minimalDonation = ep.minDonation;
+        state.minimumDonation = ep.minDonation;
         state.epochRewards = ep.availableRewards;
         state.totalDonated = ep.totalDonated;
         state.totalClaimed = ep.totalClaimed;
