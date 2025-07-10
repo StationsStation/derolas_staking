@@ -29,6 +29,13 @@ tests:
 	forge coverage -vvvv \
 		--fork-url https://mainnet.base.org
 
+lcov:
+	forge coverage -vvvv \
+		--fork-url https://mainnet.base.org \
+		--report lcov \
+		-r coverage/lcov.info
+	genhtml coverage/lcov.info -o coverage/html
+
 ci:
 	act
 
