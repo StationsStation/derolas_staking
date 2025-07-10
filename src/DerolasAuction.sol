@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IToken} from "./interfaces/IToken.sol";
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
 /// @title Balancer Router Interface
@@ -18,27 +19,6 @@ interface IBalancerRouter {
     function getPermit2() external view returns (address);
 }
 
-/// @title ERC20 Interface
-/// @notice Interface for interacting with ERC20 tokens
-interface IERC20 {
-    /// @dev Gets the amount of tokens owned by a specified account.
-    /// @param account Account address.
-    /// @return Amount of tokens owned.
-    function balanceOf(address account) external view returns (uint256);
-
-    /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-    /// @param spender Account address that will be able to transfer tokens on behalf of the caller.
-    /// @param amount Token amount.
-    /// @return True if the function execution is successful.
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /// @dev Gets remaining number of tokens that the `spender` can transfer on behalf of `owner`.
-    /// @param owner Token owner.
-    /// @param spender Account address that is able to transfer tokens on behalf of the owner.
-    /// @return Token amount allowed to be transferred.
-    function allowance(address owner, address spender) external view returns (uint256);
-}
-
 /// @title Permit2 Interface
 /// @notice Interface for interacting with Permit2 contract
 interface IPermit2 {
@@ -50,42 +30,15 @@ interface IPermit2 {
     function approve(address token, address spender, uint160 amount, uint48 expiration) external;
 }
 
-/// @title Staking Interface
-/// @notice Interface for interacting with the staking contract
-interface IStaking {
-    /// @dev Checkpoint to allocate rewards up until a current time.
-    /// @return serviceIds Staking service Ids (excluding evicted ones within a current round).
-    /// @return eligibleServiceIds Set of reward-eligible service Ids.
-    /// @return eligibleServiceRewards Corresponding set of reward-eligible service rewards.
-    /// @return evictServiceIds Evicted service Ids.
-    function checkpoint()
-        external
-        returns (
-            uint256[] memory serviceIds,
-            uint256[] memory eligibleServiceIds,
-            uint256[] memory eligibleServiceRewards,
-            uint256[] memory evictServiceIds
-        );
-
-    /// @dev Gets activity checker address.
-    /// @return Activity checker address.
-    function activityChecker() external view returns (address);
-
-    /// @dev Gets timestamp of the last staking checkpoint.
-    /// @return Timestamp of the last staking checkpoint.
-    function tsCheckpoint() external returns (uint256);
-}
-
 /// @dev Round point struct.
 /// @notice Stores information about a specific round
 struct RoundPoint {
     uint256 availableRewards; // Total rewards available for this round
     uint256 totalDonated; // Total amount donated in this round
     uint256 totalClaimed; // Total amount claimed in this round
-    uint256 length; // Length of this round in seconds
-    uint256 maxCheckpointDelay; // Maximum allowed delay between checkpoints
+    uint256 length; // Length of this round in blocks
     uint256 minDonation; // Minimum donation amount for this round
-    uint256 endTime; // End time of this round
+    uint256 endBlock; // End block of this round
 }
 
 /// @dev Game state struct.
@@ -93,9 +46,9 @@ struct RoundPoint {
 struct GameState {
     uint256 roundLength;
     uint256 currentRound;
-    uint256 roundEndTime;
+    uint256 roundEndBlock;
     uint256 minimumDonation;
-    uint256 secondsRemaining;
+    uint256 blocksRemaining;
     uint256 roundRewards;
     uint256 totalDonated;
     uint256 totalClaimed;
@@ -108,8 +61,8 @@ struct GameState {
 }
 
 /// @title Derolas Auction Contract
-/// @notice Main contract for managing staking, donations, and rewards
-/// @dev This contract handles the staking mechanism, donation collection, and reward distribution
+/// @notice Main contract for managing rounds, donations, and rewards
+/// @dev This contract handles the auction mechanism, donation collection, and reward distribution
 contract DerolasAuction {
     // Events
     event OwnerUpdated(address indexed owner);
@@ -123,12 +76,10 @@ contract DerolasAuction {
     );
     event UnclaimedRewardsDonated(uint256 indexed amount);
     event RewardsClaimed(address indexed donatorAddress, uint256 indexed amount);
-    event StakingInstanceUpdated(address indexed stakingInstance);
     event ParamsUpdated(
         uint256 indexed nextRound,
         uint256 availableRewards,
         uint256 roundLength,
-        uint256 maxCheckpointDelay,
         uint256 minDonation
     );
 
@@ -147,8 +98,6 @@ contract DerolasAuction {
 
     // Round counter
     uint256 public currentRound = 1;
-    // Staking instance address
-    address public stakingInstance;
     // Contract owner address
     address public owner;
     // Params update request status
@@ -163,6 +112,8 @@ contract DerolasAuction {
     mapping(uint256 => mapping(address => uint256)) public roundToClaimed;
     // Mapping of round => round points
     mapping(uint256 => RoundPoint) public roundPoints;
+    // Mapping of donator => amount donated
+    mapping(address => uint256) public epochDonationActivities;
 
     /// @dev DerolasStaking constructor.
     /// @param _minDonation Minimum round donation.
@@ -173,7 +124,6 @@ contract DerolasAuction {
     /// @param _incentiveTokenIndex Incentive token index.
     /// @param _availableRewards Available rewards.
     /// @param _roundLength Round length.
-    /// @param _maxCheckpointDelay Maximum checkpoint delay.
     constructor(
         uint256 _minDonation,
         address _balancerRouter,
@@ -182,8 +132,7 @@ contract DerolasAuction {
         address _incentiveTokenAddress,
         uint256 _incentiveTokenIndex,
         uint256 _availableRewards,
-        uint256 _roundLength,
-        uint256 _maxCheckpointDelay
+        uint256 _roundLength
     ) {
         balancerRouter = _balancerRouter;
         poolId = _poolId;
@@ -193,10 +142,9 @@ contract DerolasAuction {
         permit2 = IBalancerRouter(_balancerRouter).getPermit2();
         roundPoints[1].availableRewards = _availableRewards;
         roundPoints[1].length = _roundLength;
-        roundPoints[1].maxCheckpointDelay = _maxCheckpointDelay;
         roundPoints[1].minDonation = _minDonation;
 
-        roundPoints[0].endTime = block.timestamp;
+        roundPoints[0].endBlock = block.number;
         owner = msg.sender;
     }
 
@@ -210,15 +158,15 @@ contract DerolasAuction {
 
         // TODO This must be resolved to not revert
         require(
-            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= unclaimedAmount,
+            IToken(incentiveTokenAddress).balanceOf(address(this)) >= unclaimedAmount,
             "Not enough incentive balance to donate"
         );
 
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[incentiveTokenIndex] = unclaimedAmount;
 
-        IERC20(incentiveTokenAddress).approve(permit2, 0);
-        IERC20(incentiveTokenAddress).approve(permit2, unclaimedAmount);
+        IToken(incentiveTokenAddress).approve(permit2, 0);
+        IToken(incentiveTokenAddress).approve(permit2, unclaimedAmount);
         IPermit2(permit2).approve(
             incentiveTokenAddress, balancerRouter, uint160(unclaimedAmount), uint48(block.timestamp + 1 days)
         );
@@ -235,13 +183,7 @@ contract DerolasAuction {
 
         uint256 curRound = currentRound;
         uint256 claimRound = curRound - 1;
-        require(block.timestamp > roundPoints[claimRound].endTime + roundPoints[curRound].length, "Round not over");
-
-        uint256 lastStakingCheckpointDelay = block.timestamp - IStaking(stakingInstance).tsCheckpoint();
-        require(
-            lastStakingCheckpointDelay <= roundPoints[curRound].maxCheckpointDelay,
-            "Staking round end time difference overflow"
-        );
+        require(block.number > roundPoints[claimRound].endBlock + roundPoints[curRound].length, "Round not over");
 
         _donateUnclaimedRewards(claimRound);
 
@@ -250,13 +192,10 @@ contract DerolasAuction {
         if (!paramsUpdateRequested) {
             roundPoints[nextRound].availableRewards = roundPoints[curRound].availableRewards;
             roundPoints[nextRound].length = roundPoints[curRound].length;
-            roundPoints[nextRound].maxCheckpointDelay = roundPoints[curRound].maxCheckpointDelay;
         }
 
-        roundPoints[curRound].endTime = block.timestamp;
+        roundPoints[curRound].endBlock = block.number;
         currentRound = nextRound;
-
-        IStaking(stakingInstance).checkpoint();
 
         emit AuctionEnded(
             curRound,
@@ -274,7 +213,7 @@ contract DerolasAuction {
         _locked = 2;
 
         uint256 claimRound = currentRound - 1;
-        require(roundPoints[claimRound].endTime > 0, "Round not ended yet");
+        require(roundPoints[claimRound].endBlock > 0, "Round not ended yet");
         require(roundToClaimed[claimRound][msg.sender] == 0, "Already claimed");
 
         uint256 donation = roundToDonations[claimRound][msg.sender];
@@ -285,7 +224,7 @@ contract DerolasAuction {
 
         uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
         require(amount > 0, "Nothing to claim");
-        require(IERC20(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
+        require(IToken(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
 
         roundToClaimed[claimRound][msg.sender] = amount;
         roundPoints[claimRound].totalClaimed += amount;
@@ -308,29 +247,13 @@ contract DerolasAuction {
         emit OwnerUpdated(newOwner);
     }
 
-    /// @dev Sets staking instance contract address only once.
-    /// @param _stakingInstance Staking instance contract address.
-    function setStakingInstance(address _stakingInstance) external {
-        // Check current contract owner
-        require(msg.sender == owner, "Unauthorized account");
-        require(_stakingInstance != address(0), "Zero address");
-        require(stakingInstance == address(0), "Already set");
-        require(IStaking(_stakingInstance).activityChecker() == address(this), "Wrong staking instance");
-
-        stakingInstance = _stakingInstance;
-
-        emit StakingInstanceUpdated(_stakingInstance);
-    }
-
     /// @dev Changes round parameters.
     /// @param newRoundRewards New round rewards.
     /// @param newRoundLength New round length.
-    /// @param newMaxCheckpointDelay New maximum checkpoint delay.
     /// @param minDonation New minimum donation.
     function changeParams(
         uint256 newRoundRewards,
         uint256 newRoundLength,
-        uint256 newMaxCheckpointDelay,
         uint256 minDonation
     ) external {
         require(msg.sender == owner, "Unauthorized account");
@@ -338,11 +261,10 @@ contract DerolasAuction {
         uint256 nextRound = currentRound + 1;
         roundPoints[nextRound].availableRewards = newRoundRewards;
         roundPoints[nextRound].length = newRoundLength;
-        roundPoints[nextRound].maxCheckpointDelay = newMaxCheckpointDelay;
         roundPoints[nextRound].minDonation = minDonation;
         paramsUpdateRequested = true;
 
-        emit ParamsUpdated(nextRound, newRoundRewards, newRoundLength, newMaxCheckpointDelay, minDonation);
+        emit ParamsUpdated(nextRound, newRoundRewards, newRoundLength, minDonation);
     }
 
     /// @dev Gets claimable rewards.
@@ -359,7 +281,7 @@ contract DerolasAuction {
 
         // Calculate rewards
         uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
-        require(IERC20(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
+        require(IToken(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
 
         return amount;
     }
@@ -371,7 +293,7 @@ contract DerolasAuction {
         uint256 curRound = currentRound;
         require(donation >= roundPoints[curRound].minDonation, "Minimum donation not met");
         require(
-            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= roundPoints[curRound].availableRewards,
+            IToken(incentiveTokenAddress).balanceOf(address(this)) >= roundPoints[curRound].availableRewards,
             "Not enough rewards to play the game"
         );
 
@@ -383,7 +305,7 @@ contract DerolasAuction {
         return (donation * 1e18) / totalRoundDonations;
     }
 
-    /// @dev Donates to the staking contract.
+    /// @dev Donates to the auction contract.
     function donate() external payable {
         // Reentrancy guard
         require(_locked == 1, "ReentrancyGuard");
@@ -392,7 +314,7 @@ contract DerolasAuction {
         uint256 curRound = currentRound;
         require(msg.value >= roundPoints[curRound].minDonation, "Donation amount is less than the minimum donation");
         require(
-            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= roundPoints[curRound].availableRewards,
+            IToken(incentiveTokenAddress).balanceOf(address(this)) >= roundPoints[curRound].availableRewards,
             "Not enough rewards to play the game"
         );
 
@@ -400,6 +322,7 @@ contract DerolasAuction {
 
         roundPoints[curRound].totalDonated += msg.value;
         roundToDonations[curRound][msg.sender] = msg.value;
+        epochDonationActivities[msg.sender] += msg.value;
 
         emit DonationReceived(msg.sender, msg.value);
 
@@ -427,10 +350,10 @@ contract DerolasAuction {
         return (donation * 1e18) / roundPoints[curRound].totalDonated;
     }
 
-    /// @dev Gets seconds since last round end.
-    /// @return Seconds since last round end.
-    function getSecondsSinceRoundEnd() external view returns (uint256) {
-        return block.timestamp - roundPoints[currentRound - 1].endTime;
+    /// @dev Gets blocks since last round end.
+    /// @return Blocks since last round end.
+    function getBlocksSinceRoundEnd() external view returns (uint256) {
+        return block.number - roundPoints[currentRound - 1].endBlock;
     }
 
     /// @dev Gets remaining round length progress.
@@ -438,13 +361,13 @@ contract DerolasAuction {
     /// @return extendedRoundTime extended round time, if round length was reached.
     function getRemainingRoundLength() public view returns (uint256 remainingRoundLength, uint256 extendedRoundTime) {
         uint256 curRound = currentRound;
-        uint256 secondsSinceRoundEnd = block.timestamp - roundPoints[curRound - 1].endTime;
+        uint256 blocksSinceRoundEnd = block.number - roundPoints[curRound - 1].endBlock;
 
         uint256 curRoundLength = roundPoints[curRound].length;
-        if (secondsSinceRoundEnd > curRoundLength) {
-            extendedRoundTime = secondsSinceRoundEnd - curRoundLength;
+        if (blocksSinceRoundEnd > curRoundLength) {
+            extendedRoundTime = blocksSinceRoundEnd - curRoundLength;
         } else {
-            remainingRoundLength = curRoundLength - secondsSinceRoundEnd;
+            remainingRoundLength = curRoundLength - blocksSinceRoundEnd;
         }
     }
 
@@ -452,14 +375,14 @@ contract DerolasAuction {
     /// @return Round progress.
     function getRoundProgress() external view returns (uint256) {
         uint256 curRound = currentRound;
-        uint256 secondsSinceRoundEnd = block.timestamp - roundPoints[curRound - 1].endTime;
+        uint256 blocksSinceRoundEnd = block.number - roundPoints[curRound - 1].endBlock;
 
         uint256 curRoundLength = roundPoints[curRound].length;
-        if (secondsSinceRoundEnd > curRoundLength) {
-            secondsSinceRoundEnd = curRoundLength;
+        if (blocksSinceRoundEnd > curRoundLength) {
+            blocksSinceRoundEnd = curRoundLength;
         }
 
-        return (secondsSinceRoundEnd * 100) / curRoundLength;
+        return (blocksSinceRoundEnd * 100) / curRoundLength;
     }
 
     /// @dev Gets total unclaimed rewards.
@@ -482,14 +405,14 @@ contract DerolasAuction {
         state.totalDonated = ep.totalDonated;
         state.totalClaimed = ep.totalClaimed;
 
-        uint256 roundStart = roundPoints[curRound - 1].endTime;
-        state.roundEndTime = roundStart + ep.length;
+        uint256 roundStart = roundPoints[curRound - 1].endBlock;
+        state.roundEndBlock = roundStart + ep.length;
 
-        if (block.timestamp < state.roundEndTime) {
-            state.secondsRemaining = state.roundEndTime - block.timestamp;
+        if (block.number < state.roundEndBlock) {
+            state.blocksRemaining = state.roundEndBlock - block.number;
         }
 
-        state.incentiveBalance = IERC20(incentiveTokenAddress).balanceOf(address(this));
+        state.incentiveBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
         state.userCurrentDonation = roundToDonations[curRound][user];
 
         if (state.totalDonated > 0 && state.userCurrentDonation > 0) {
@@ -499,7 +422,7 @@ contract DerolasAuction {
         uint256 claimRound = curRound - 1;
         state.hasClaimed = roundToClaimed[claimRound][user] > 0;
 
-        if (roundPoints[claimRound].endTime > 0) {
+        if (roundPoints[claimRound].endBlock > 0) {
             uint256 donation = roundToDonations[claimRound][user];
             uint256 totalDon = roundPoints[claimRound].totalDonated;
             if (donation > 0 && totalDon > 0) {
@@ -509,7 +432,7 @@ contract DerolasAuction {
 
         state.canPlayGame = (
             state.userCurrentDonation == 0 && state.incentiveBalance >= state.roundRewards
-                && block.timestamp < state.roundEndTime
+                && block.number < state.roundEndBlock
         );
     }
 
@@ -518,7 +441,7 @@ contract DerolasAuction {
     /// @return nonces Current donations value.
     function getMultisigNonces(address multisig) external view virtual returns (uint256[] memory nonces) {
         nonces = new uint256[](1);
-        nonces[0] = roundToDonations[currentRound][multisig];
+        nonces[0] = epochDonationActivities[multisig];
     }
 
     /// @dev Checks if the service multisig liveness ratio passes the defined liveness threshold.

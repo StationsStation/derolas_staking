@@ -56,7 +56,7 @@ struct ServiceInfo {
 }
 
 /// @title StakingManager - Smart contract for managing minimal effort service staking
-abstract contract StakingManager is ERC721TokenReceiver {
+contract StakingManager is ERC721TokenReceiver {
     event CreatedAndStaked(
         address indexed sender, uint256 serviceId, address indexed multisig, address stakingInstance
     );

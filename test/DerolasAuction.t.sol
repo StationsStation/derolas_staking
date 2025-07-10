@@ -17,7 +17,6 @@ contract TestDerolasAuctionContract is Test {
     uint256 public incentiveTokenIndex = 3;
     uint256 public availableRewards = 1e18;
     uint256 public roundLength = 90; // blocks
-    uint256 public maxCheckpointDelay = 10; // blocks
 
     // Test parameters
     address public whaleAddress = 0xC8F7030a4e25585624e2Fc792255a547255Cd77c;
@@ -32,8 +31,7 @@ contract TestDerolasAuctionContract is Test {
             incentiveTokenAddress,
             incentiveTokenIndex,
             availableRewards,
-            roundLength,
-            maxCheckpointDelay
+            roundLength
         );
     }
 
@@ -74,10 +72,10 @@ contract TestDerolasAuctionContract is Test {
         assertEq(roundProgress, 0, "Round progress should be zero initially");
     }
 
-    function testGetSecondsSinceRoundEnd() public view {
+    function testGetBlocksSinceRoundEnd() public view {
         // Check that the seconds since round end is zero initially
-        uint256 secondsSinceRoundEnd = c.getSecondsSinceRoundEnd();
-        assertEq(secondsSinceRoundEnd, 0, "Seconds since round end should be zero initially");
+        uint256 secondsSinceRoundEnd = c.getBlocksSinceRoundEnd();
+        assertEq(secondsSinceRoundEnd, 0, "Blocks since round end should be zero initially");
     }
 
     function testGetCurrentShare() public view {
@@ -93,7 +91,7 @@ contract TestDerolasAuctionContract is Test {
         assertEq(estimatedPercentage, 1e18, "Estimated ticket percentage should be 100% as no donations exist yet");
     }
 
-    function testClaimable() public {
+    function testClaimable() public view {
         // Check that the claimable incentives are zero initially
         uint256 claimableIncentives = c.claimable(address(this));
         assertEq(claimableIncentives, 0, "Claimable incentives should be zero initially");
