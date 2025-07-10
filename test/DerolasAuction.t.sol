@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {DerolasAuction, GameState} from "src/DerolasAuction.sol";
 
-contract TestContract is Test {
+contract TestDerolasAuctionContract is Test {
     DerolasAuction public c;
 
     uint256 public minimumDonation = 1000000000000000;
