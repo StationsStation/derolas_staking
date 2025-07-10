@@ -6,17 +6,21 @@ fmt:
 	forge fmt
 	forge fmt --check
 	yarn run solhint \
-		--config .solhint.json src/**/*.sol \
+		--config .solhint.json \
 		--fix \
 		--noPrompt \
 		--noPoster \
-		--quiet
+		--quiet \
+		src/**/*.sol \
+		test/**/*.sol
 
 lint:
 	yarn run solhint \
-		--config .solhint.json src/**/*.sol \
+		--config .solhint.json \
 		--quiet \
-		--noPrompt
+		--noPrompt \
+		src/**/*.sol \
+		test/**/*.sol
 
 build:
 	forge build

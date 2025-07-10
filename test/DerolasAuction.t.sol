@@ -1,11 +1,11 @@
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
 
-import "forge-std/Test.sol";
-
-import "src/DerolasAuction.sol";
+import {Test} from "forge-std/Test.sol";
+import {DerolasAuction} from "src/DerolasAuction.sol";
 
 contract TestContract is Test {
-    DerolasAuction c;
+    DerolasAuction public c;
 
     uint256 public minDonation = 1000000000000000;
     address public balancerRouter = 0x3f170631ed9821Ca51A59D996aB095162438DC10;
@@ -31,7 +31,7 @@ contract TestContract is Test {
         );
     }
 
-    function testBar() public {
+    function testBar() public pure {
         assertEq(uint256(1), uint256(1), "ok");
     }
 }
