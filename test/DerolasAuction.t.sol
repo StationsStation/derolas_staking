@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {DerolasAuction} from "src/DerolasAuction.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
+import {DerolasAuction, GameState} from "src/DerolasAuction.sol";
 
 contract TestContract is Test {
     DerolasAuction public c;
 
-    uint256 public minDonation = 1000000000000000;
+    uint256 public minimumDonation = 1000000000000000;
     address public balancerRouter = 0x3f170631ed9821Ca51A59D996aB095162438DC10;
     address public poolId = 0xaF5B7999F491C42C05B5a2CA80f1d200D617cC8c;
     uint256 public assetsInPool = 8;
@@ -19,7 +19,7 @@ contract TestContract is Test {
 
     function setUp() public {
         c = new DerolasAuction(
-            minDonation,
+            minimumDonation,
             balancerRouter,
             poolId,
             assetsInPool,
@@ -31,7 +31,10 @@ contract TestContract is Test {
         );
     }
 
-    function testBar() public pure {
-        assertEq(uint256(1), uint256(1), "ok");
+    function testGetGameState() public view {
+        // Check that the game state is initialized correctly
+        address owner = address(this);
+        GameState memory gameState = c.getGameState(owner);
+        assertEq(gameState.minimumDonation, minimumDonation, "Min donation should match");
     }
 }
