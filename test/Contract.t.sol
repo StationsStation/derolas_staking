@@ -17,19 +17,19 @@ contract TestContract is Test {
     uint256 public epochLength = 90; // blocks
     uint256 public maxCheckpointDelay = 10; // blocks
 
-    // function setUp() public {
-    //     c = new DerolasAuction(
-    //         minDonation,
-    //         balancerRouter,
-    //         poolId,
-    //         assetsInPool,
-    //         incentiveTokenAddress,
-    //         incentiveTokenIndex,
-    //         availableRewards,
-    //         epochLength,
-    //         maxCheckpointDelay
-    //     );
-    // }
+    function setUp() public {
+        c = new DerolasAuction(
+            minDonation,
+            balancerRouter,
+            poolId,
+            assetsInPool,
+            incentiveTokenAddress,
+            incentiveTokenIndex,
+            availableRewards,
+            epochLength,
+            maxCheckpointDelay
+        );
+    }
 
     function testBar() public {
         assertEq(uint256(1), uint256(1), "ok");

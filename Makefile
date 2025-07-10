@@ -22,7 +22,8 @@ build:
 	forge build
 
 tests:
-	forge test
+	forge test -vvvv \
+		--fork-url https://mainnet.base.org
 
 ci:
 	act
