@@ -37,4 +37,10 @@ contract TestDerolasAuctionContract is Test {
         GameState memory gameState = c.getGameState(owner);
         assertEq(gameState.minimumDonation, minimumDonation, "Min donation should match");
     }
+
+    function testDonateFailsWithoutIncentives() public {
+        // Simulate a failing donation
+        vm.expectRevert("Not enough rewards to play the game");
+        c.donate{value: minimumDonation}();
+    }
 }
