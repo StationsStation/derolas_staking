@@ -16,6 +16,7 @@ This repository contains a simple staking contract that allows users to stake to
 - [Node.js](https://nodejs.org) - JavaScript runtime for running scripts and linters.
 - [Docker](https://www.docker.com) - Platform for developing, shipping, and running applications in containers.
 - [nektos/act](https://github.com/nektos/act) - Run GitHub Actions locally using Docker.
+- [lcov](https://github.com/linux-test-project/lcov) - A graphical front-end for GCC's coverage testing tool gcov.
 
 
 ```bash
@@ -59,3 +60,12 @@ make ci
 This will use nektos/act to run the CI checks in a Docker container. Make sure you have Docker installed and running on your machine.
 - [Docker](https://www.docker.com) - Platform for developing, shipping, and running applications in containers.
 - [nektos/act](https://github.com/nektos/act) - Run GitHub Actions locally using Docker.
+
+## Coverage
+To generate code coverage reports, you can use the following command:
+
+```bash
+make lcov
+```
+
+The coverage reports will be generated in the `coverage` directory. You can view the reports by opening the `index.html` file in a web browser.
