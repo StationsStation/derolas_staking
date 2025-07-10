@@ -1,3 +1,8 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+	commit = 60acb7aaadcce2d68e52986a0a66fe79f07d138f
+[submodule "lib/solmate"]
+	path = lib/solmate
+	url = https://github.com/transmissions11/solmate
+	branch = v7
