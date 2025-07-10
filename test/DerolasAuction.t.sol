@@ -16,7 +16,7 @@ contract TestDerolasAuctionContract is Test {
     address public incentiveTokenAddress = 0x54330d28ca3357F294334BDC454a032e7f353416; // OLAS
     uint256 public incentiveTokenIndex = 3;
     uint256 public availableRewards = 1e18;
-    uint256 public epochLength = 90; // blocks
+    uint256 public roundLength = 90; // blocks
     uint256 public maxCheckpointDelay = 10; // blocks
 
     // Test parameters
@@ -32,7 +32,7 @@ contract TestDerolasAuctionContract is Test {
             incentiveTokenAddress,
             incentiveTokenIndex,
             availableRewards,
-            epochLength,
+            roundLength,
             maxCheckpointDelay
         );
     }
@@ -68,16 +68,16 @@ contract TestDerolasAuctionContract is Test {
         assertEq(totalUnclaimed, 0, "Total unclaimed incentives should be zero initially");
     }
 
-    function testGetEpochProgress() public view {
-        // Check that the epoch progress is zero initially
-        uint256 epochProgress = c.getEpochProgress();
-        assertEq(epochProgress, 0, "Epoch progress should be zero initially");
+    function testGetRoundProgress() public view {
+        // Check that the round progress is zero initially
+        uint256 roundProgress = c.getRoundProgress();
+        assertEq(roundProgress, 0, "Round progress should be zero initially");
     }
 
-    function testGetSecondsSinceEpochEnd() public view {
-        // Check that the seconds since epoch end is zero initially
-        uint256 secondsSinceEpochEnd = c.getSecondsSinceEpochEnd();
-        assertEq(secondsSinceEpochEnd, 0, "Seconds since epoch end should be zero initially");
+    function testGetSecondsSinceRoundEnd() public view {
+        // Check that the seconds since round end is zero initially
+        uint256 secondsSinceRoundEnd = c.getSecondsSinceRoundEnd();
+        assertEq(secondsSinceRoundEnd, 0, "Seconds since round end should be zero initially");
     }
 
     function testGetCurrentShare() public view {

@@ -54,7 +54,7 @@ interface IPermit2 {
 /// @notice Interface for interacting with the staking contract
 interface IStaking {
     /// @dev Checkpoint to allocate rewards up until a current time.
-    /// @return serviceIds Staking service Ids (excluding evicted ones within a current epoch).
+    /// @return serviceIds Staking service Ids (excluding evicted ones within a current round).
     /// @return eligibleServiceIds Set of reward-eligible service Ids.
     /// @return eligibleServiceRewards Corresponding set of reward-eligible service rewards.
     /// @return evictServiceIds Evicted service Ids.
@@ -76,27 +76,27 @@ interface IStaking {
     function tsCheckpoint() external returns (uint256);
 }
 
-/// @dev Epoch point struct.
-/// @notice Stores information about a specific epoch
-struct EpochPoint {
-    uint256 availableRewards; // Total rewards available for this epoch
-    uint256 totalDonated; // Total amount donated in this epoch
-    uint256 totalClaimed; // Total amount claimed in this epoch
-    uint256 length; // Length of this epoch in seconds
+/// @dev Round point struct.
+/// @notice Stores information about a specific round
+struct RoundPoint {
+    uint256 availableRewards; // Total rewards available for this round
+    uint256 totalDonated; // Total amount donated in this round
+    uint256 totalClaimed; // Total amount claimed in this round
+    uint256 length; // Length of this round in seconds
     uint256 maxCheckpointDelay; // Maximum allowed delay between checkpoints
-    uint256 minDonation; // Minimum donation amount for this epoch
-    uint256 endTime; // End time of this epoch
+    uint256 minDonation; // Minimum donation amount for this round
+    uint256 endTime; // End time of this round
 }
 
 /// @dev Game state struct.
 /// @notice Stores information about the current game state
 struct GameState {
-    uint256 epochLength;
-    uint256 currentEpoch;
-    uint256 epochEndTime;
+    uint256 roundLength;
+    uint256 currentRound;
+    uint256 roundEndTime;
     uint256 minimumDonation;
     uint256 secondsRemaining;
-    uint256 epochRewards;
+    uint256 roundRewards;
     uint256 totalDonated;
     uint256 totalClaimed;
     uint256 incentiveBalance;
@@ -116,18 +116,18 @@ contract DerolasAuction {
     event DonationReceived(address indexed donatorAddress, uint256 indexed amount);
     event TopUpIncentiveReceived(uint256 indexed amount);
     event AuctionEnded(
-        uint256 indexed epochCounter,
-        uint256 indexed totalEpochDonations,
-        uint256 indexed totalEpochClaimed,
+        uint256 indexed roundCounter,
+        uint256 indexed totalRoundDonations,
+        uint256 indexed totalRoundClaimed,
         uint256 availableRewards
     );
     event UnclaimedRewardsDonated(uint256 indexed amount);
     event RewardsClaimed(address indexed donatorAddress, uint256 indexed amount);
     event StakingInstanceUpdated(address indexed stakingInstance);
     event ParamsUpdated(
-        uint256 indexed nextEpoch,
+        uint256 indexed nextRound,
         uint256 availableRewards,
-        uint256 epochLength,
+        uint256 roundLength,
         uint256 maxCheckpointDelay,
         uint256 minDonation
     );
@@ -145,8 +145,8 @@ contract DerolasAuction {
     // Permit2 address
     address public immutable permit2;
 
-    // Epoch counter
-    uint256 public currentEpoch = 1;
+    // Round counter
+    uint256 public currentRound = 1;
     // Staking instance address
     address public stakingInstance;
     // Contract owner address
@@ -157,22 +157,22 @@ contract DerolasAuction {
     // Reentrancy lock
     uint256 internal _locked = 1;
 
-    // Mapping of epoch => (mapping of donator => amount donated)
-    mapping(uint256 => mapping(address => uint256)) public epochToDonations;
-    // Mapping of epoch => (mapping of claimer => amount claimed)
-    mapping(uint256 => mapping(address => uint256)) public epochToClaimed;
-    // Mapping of epoch => epoch points
-    mapping(uint256 => EpochPoint) public epochPoints;
+    // Mapping of round => (mapping of donator => amount donated)
+    mapping(uint256 => mapping(address => uint256)) public roundToDonations;
+    // Mapping of round => (mapping of claimer => amount claimed)
+    mapping(uint256 => mapping(address => uint256)) public roundToClaimed;
+    // Mapping of round => round points
+    mapping(uint256 => RoundPoint) public roundPoints;
 
     /// @dev DerolasStaking constructor.
-    /// @param _minDonation Minimum epoch donation.
+    /// @param _minDonation Minimum round donation.
     /// @param _balancerRouter Balancer router address.
     /// @param _poolId Pool ID.
     /// @param _assetsInPool Assets in pool.
     /// @param _incentiveTokenAddress Incentive token address.
     /// @param _incentiveTokenIndex Incentive token index.
     /// @param _availableRewards Available rewards.
-    /// @param _epochLength Epoch length.
+    /// @param _roundLength Round length.
     /// @param _maxCheckpointDelay Maximum checkpoint delay.
     constructor(
         uint256 _minDonation,
@@ -182,7 +182,7 @@ contract DerolasAuction {
         address _incentiveTokenAddress,
         uint256 _incentiveTokenIndex,
         uint256 _availableRewards,
-        uint256 _epochLength,
+        uint256 _roundLength,
         uint256 _maxCheckpointDelay
     ) {
         balancerRouter = _balancerRouter;
@@ -191,19 +191,19 @@ contract DerolasAuction {
         incentiveTokenAddress = _incentiveTokenAddress;
         incentiveTokenIndex = _incentiveTokenIndex;
         permit2 = IBalancerRouter(_balancerRouter).getPermit2();
-        epochPoints[1].availableRewards = _availableRewards;
-        epochPoints[1].length = _epochLength;
-        epochPoints[1].maxCheckpointDelay = _maxCheckpointDelay;
-        epochPoints[1].minDonation = _minDonation;
+        roundPoints[1].availableRewards = _availableRewards;
+        roundPoints[1].length = _roundLength;
+        roundPoints[1].maxCheckpointDelay = _maxCheckpointDelay;
+        roundPoints[1].minDonation = _minDonation;
 
-        epochPoints[0].endTime = block.timestamp;
+        roundPoints[0].endTime = block.timestamp;
         owner = msg.sender;
     }
 
     /// @dev Donates unclaimed rewards.
-    /// @param claimEpoch Claim epoch.
-    function _donateUnclaimedRewards(uint256 claimEpoch) internal {
-        uint256 unclaimedAmount = epochPoints[claimEpoch].availableRewards - epochPoints[claimEpoch].totalClaimed;
+    /// @param claimRound Claim round.
+    function _donateUnclaimedRewards(uint256 claimRound) internal {
+        uint256 unclaimedAmount = roundPoints[claimRound].availableRewards - roundPoints[claimRound].totalClaimed;
         if (unclaimedAmount == 0) {
             return;
         }
@@ -227,68 +227,68 @@ contract DerolasAuction {
         emit UnclaimedRewardsDonated(unclaimedAmount);
     }
 
-    /// @dev Ends an epoch.
-    function endEpoch() external {
+    /// @dev Ends an round.
+    function endRound() external {
         // Reentrancy guard
         require(_locked == 1, "ReentrancyGuard");
         _locked = 2;
 
-        uint256 curEpoch = currentEpoch;
-        uint256 claimEpoch = curEpoch - 1;
-        require(block.timestamp > epochPoints[claimEpoch].endTime + epochPoints[curEpoch].length, "Epoch not over");
+        uint256 curRound = currentRound;
+        uint256 claimRound = curRound - 1;
+        require(block.timestamp > roundPoints[claimRound].endTime + roundPoints[curRound].length, "Round not over");
 
         uint256 lastStakingCheckpointDelay = block.timestamp - IStaking(stakingInstance).tsCheckpoint();
         require(
-            lastStakingCheckpointDelay <= epochPoints[curEpoch].maxCheckpointDelay,
-            "Staking epoch end time difference overflow"
+            lastStakingCheckpointDelay <= roundPoints[curRound].maxCheckpointDelay,
+            "Staking round end time difference overflow"
         );
 
-        _donateUnclaimedRewards(claimEpoch);
+        _donateUnclaimedRewards(claimRound);
 
-        uint256 nextEpoch = curEpoch + 1;
+        uint256 nextRound = curRound + 1;
 
         if (!paramsUpdateRequested) {
-            epochPoints[nextEpoch].availableRewards = epochPoints[curEpoch].availableRewards;
-            epochPoints[nextEpoch].length = epochPoints[curEpoch].length;
-            epochPoints[nextEpoch].maxCheckpointDelay = epochPoints[curEpoch].maxCheckpointDelay;
+            roundPoints[nextRound].availableRewards = roundPoints[curRound].availableRewards;
+            roundPoints[nextRound].length = roundPoints[curRound].length;
+            roundPoints[nextRound].maxCheckpointDelay = roundPoints[curRound].maxCheckpointDelay;
         }
 
-        epochPoints[curEpoch].endTime = block.timestamp;
-        currentEpoch = nextEpoch;
+        roundPoints[curRound].endTime = block.timestamp;
+        currentRound = nextRound;
 
         IStaking(stakingInstance).checkpoint();
 
         emit AuctionEnded(
-            curEpoch,
-            epochPoints[curEpoch].totalDonated,
-            epochPoints[claimEpoch].totalClaimed,
-            epochPoints[curEpoch].availableRewards
+            curRound,
+            roundPoints[curRound].totalDonated,
+            roundPoints[claimRound].totalClaimed,
+            roundPoints[curRound].availableRewards
         );
 
         _locked = 1;
     }
 
-    /// @dev Claims donation based rewards for the previous epoch
+    /// @dev Claims donation based rewards for the previous round
     function claim() external {
         require(_locked == 1, "ReentrancyGuard");
         _locked = 2;
 
-        uint256 claimEpoch = currentEpoch - 1;
-        require(epochPoints[claimEpoch].endTime > 0, "Epoch not ended yet");
-        require(epochToClaimed[claimEpoch][msg.sender] == 0, "Already claimed");
+        uint256 claimRound = currentRound - 1;
+        require(roundPoints[claimRound].endTime > 0, "Round not ended yet");
+        require(roundToClaimed[claimRound][msg.sender] == 0, "Already claimed");
 
-        uint256 donation = epochToDonations[claimEpoch][msg.sender];
+        uint256 donation = roundToDonations[claimRound][msg.sender];
         require(donation > 0, "No donation found");
 
-        uint256 totalEpochDonations = epochPoints[claimEpoch].totalDonated;
-        require(totalEpochDonations > 0, "No donations this epoch");
+        uint256 totalRoundDonations = roundPoints[claimRound].totalDonated;
+        require(totalRoundDonations > 0, "No donations this round");
 
-        uint256 amount = (donation * epochPoints[claimEpoch].availableRewards) / totalEpochDonations;
+        uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
         require(amount > 0, "Nothing to claim");
         require(IERC20(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
 
-        epochToClaimed[claimEpoch][msg.sender] = amount;
-        epochPoints[claimEpoch].totalClaimed += amount;
+        roundToClaimed[claimRound][msg.sender] = amount;
+        roundPoints[claimRound].totalClaimed += amount;
 
         SafeTransferLib.safeTransfer(incentiveTokenAddress, msg.sender, amount);
 
@@ -322,43 +322,43 @@ contract DerolasAuction {
         emit StakingInstanceUpdated(_stakingInstance);
     }
 
-    /// @dev Changes epoch parameters.
-    /// @param newEpochRewards New epoch rewards.
-    /// @param newEpochLength New epoch length.
+    /// @dev Changes round parameters.
+    /// @param newRoundRewards New round rewards.
+    /// @param newRoundLength New round length.
     /// @param newMaxCheckpointDelay New maximum checkpoint delay.
     /// @param minDonation New minimum donation.
     function changeParams(
-        uint256 newEpochRewards,
-        uint256 newEpochLength,
+        uint256 newRoundRewards,
+        uint256 newRoundLength,
         uint256 newMaxCheckpointDelay,
         uint256 minDonation
     ) external {
         require(msg.sender == owner, "Unauthorized account");
 
-        uint256 nextEpoch = currentEpoch + 1;
-        epochPoints[nextEpoch].availableRewards = newEpochRewards;
-        epochPoints[nextEpoch].length = newEpochLength;
-        epochPoints[nextEpoch].maxCheckpointDelay = newMaxCheckpointDelay;
-        epochPoints[nextEpoch].minDonation = minDonation;
+        uint256 nextRound = currentRound + 1;
+        roundPoints[nextRound].availableRewards = newRoundRewards;
+        roundPoints[nextRound].length = newRoundLength;
+        roundPoints[nextRound].maxCheckpointDelay = newMaxCheckpointDelay;
+        roundPoints[nextRound].minDonation = minDonation;
         paramsUpdateRequested = true;
 
-        emit ParamsUpdated(nextEpoch, newEpochRewards, newEpochLength, newMaxCheckpointDelay, minDonation);
+        emit ParamsUpdated(nextRound, newRoundRewards, newRoundLength, newMaxCheckpointDelay, minDonation);
     }
 
     /// @dev Gets claimable rewards.
     /// @param account Account address.
     /// @return Claimable rewards.
     function claimable(address account) external view returns (uint256) {
-        uint256 claimEpoch = currentEpoch - 1;
-        uint256 donation = epochToDonations[claimEpoch][account];
-        uint256 totalEpochDonations = epochPoints[claimEpoch].totalDonated;
+        uint256 claimRound = currentRound - 1;
+        uint256 donation = roundToDonations[claimRound][account];
+        uint256 totalRoundDonations = roundPoints[claimRound].totalDonated;
 
-        if (donation == 0 || totalEpochDonations == 0) {
+        if (donation == 0 || totalRoundDonations == 0) {
             return 0;
         }
 
         // Calculate rewards
-        uint256 amount = (donation * epochPoints[claimEpoch].availableRewards) / totalEpochDonations;
+        uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
         require(IERC20(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
 
         return amount;
@@ -368,19 +368,19 @@ contract DerolasAuction {
     /// @param donation Donation amount.
     /// @return Ticket percentage.
     function estimateTicketPercentage(uint256 donation) external view returns (uint256) {
-        uint256 curEpoch = currentEpoch;
-        require(donation >= epochPoints[curEpoch].minDonation, "Minimum donation not met");
+        uint256 curRound = currentRound;
+        require(donation >= roundPoints[curRound].minDonation, "Minimum donation not met");
         require(
-            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= epochPoints[curEpoch].availableRewards,
+            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= roundPoints[curRound].availableRewards,
             "Not enough rewards to play the game"
         );
 
-        uint256 totalEpochDonations = epochPoints[curEpoch].totalDonated;
-        if (totalEpochDonations == 0) {
+        uint256 totalRoundDonations = roundPoints[curRound].totalDonated;
+        if (totalRoundDonations == 0) {
             return 1e18; // full share
         }
 
-        return (donation * 1e18) / totalEpochDonations;
+        return (donation * 1e18) / totalRoundDonations;
     }
 
     /// @dev Donates to the staking contract.
@@ -389,17 +389,17 @@ contract DerolasAuction {
         require(_locked == 1, "ReentrancyGuard");
         _locked = 2;
 
-        uint256 curEpoch = currentEpoch;
-        require(msg.value >= epochPoints[curEpoch].minDonation, "Donation amount is less than the minimum donation");
+        uint256 curRound = currentRound;
+        require(msg.value >= roundPoints[curRound].minDonation, "Donation amount is less than the minimum donation");
         require(
-            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= epochPoints[curEpoch].availableRewards,
+            IERC20(incentiveTokenAddress).balanceOf(address(this)) >= roundPoints[curRound].availableRewards,
             "Not enough rewards to play the game"
         );
 
-        require(epochToDonations[curEpoch][msg.sender] == 0, "Already donated this epoch");
+        require(roundToDonations[curRound][msg.sender] == 0, "Already donated this round");
 
-        epochPoints[curEpoch].totalDonated += msg.value;
-        epochToDonations[curEpoch][msg.sender] = msg.value;
+        roundPoints[curRound].totalDonated += msg.value;
+        roundToDonations[curRound][msg.sender] = msg.value;
 
         emit DonationReceived(msg.sender, msg.value);
 
@@ -419,97 +419,97 @@ contract DerolasAuction {
     /// @param account Account address.
     /// @return Current share.
     function getCurrentShare(address account) external view returns (uint256) {
-        uint256 curEpoch = currentEpoch;
-        uint256 donation = epochToDonations[curEpoch][account];
+        uint256 curRound = currentRound;
+        uint256 donation = roundToDonations[curRound][account];
         if (donation == 0) {
             return 0; // No donation, no share
         }
-        return (donation * 1e18) / epochPoints[curEpoch].totalDonated;
+        return (donation * 1e18) / roundPoints[curRound].totalDonated;
     }
 
-    /// @dev Gets seconds since last epoch end.
-    /// @return Seconds since last epoch end.
-    function getSecondsSinceEpochEnd() external view returns (uint256) {
-        return block.timestamp - epochPoints[currentEpoch - 1].endTime;
+    /// @dev Gets seconds since last round end.
+    /// @return Seconds since last round end.
+    function getSecondsSinceRoundEnd() external view returns (uint256) {
+        return block.timestamp - roundPoints[currentRound - 1].endTime;
     }
 
-    /// @dev Gets remaining epoch length progress.
-    /// @return remainingEpochLength Remaining epoch length.
-    /// @return extendedEpochTime extended epoch time, if epoch length was reached.
-    function getRemainingEpochLength() public view returns (uint256 remainingEpochLength, uint256 extendedEpochTime) {
-        uint256 curEpoch = currentEpoch;
-        uint256 secondsSinceEpochEnd = block.timestamp - epochPoints[curEpoch - 1].endTime;
+    /// @dev Gets remaining round length progress.
+    /// @return remainingRoundLength Remaining round length.
+    /// @return extendedRoundTime extended round time, if round length was reached.
+    function getRemainingRoundLength() public view returns (uint256 remainingRoundLength, uint256 extendedRoundTime) {
+        uint256 curRound = currentRound;
+        uint256 secondsSinceRoundEnd = block.timestamp - roundPoints[curRound - 1].endTime;
 
-        uint256 curEpochLength = epochPoints[curEpoch].length;
-        if (secondsSinceEpochEnd > curEpochLength) {
-            extendedEpochTime = secondsSinceEpochEnd - curEpochLength;
+        uint256 curRoundLength = roundPoints[curRound].length;
+        if (secondsSinceRoundEnd > curRoundLength) {
+            extendedRoundTime = secondsSinceRoundEnd - curRoundLength;
         } else {
-            remainingEpochLength = curEpochLength - secondsSinceEpochEnd;
+            remainingRoundLength = curRoundLength - secondsSinceRoundEnd;
         }
     }
 
-    /// @dev Gets epoch progress.
-    /// @return Epoch progress.
-    function getEpochProgress() external view returns (uint256) {
-        uint256 curEpoch = currentEpoch;
-        uint256 secondsSinceEpochEnd = block.timestamp - epochPoints[curEpoch - 1].endTime;
+    /// @dev Gets round progress.
+    /// @return Round progress.
+    function getRoundProgress() external view returns (uint256) {
+        uint256 curRound = currentRound;
+        uint256 secondsSinceRoundEnd = block.timestamp - roundPoints[curRound - 1].endTime;
 
-        uint256 curEpochLength = epochPoints[curEpoch].length;
-        if (secondsSinceEpochEnd > curEpochLength) {
-            secondsSinceEpochEnd = curEpochLength;
+        uint256 curRoundLength = roundPoints[curRound].length;
+        if (secondsSinceRoundEnd > curRoundLength) {
+            secondsSinceRoundEnd = curRoundLength;
         }
 
-        return (secondsSinceEpochEnd * 100) / curEpochLength;
+        return (secondsSinceRoundEnd * 100) / curRoundLength;
     }
 
     /// @dev Gets total unclaimed rewards.
     /// @return Total unclaimed rewards.
     function getTotalUnclaimed() external view returns (uint256) {
-        uint256 claimEpoch = currentEpoch - 1;
-        return epochPoints[claimEpoch].availableRewards - epochPoints[claimEpoch].totalClaimed;
+        uint256 claimRound = currentRound - 1;
+        return roundPoints[claimRound].availableRewards - roundPoints[claimRound].totalClaimed;
     }
 
     /// @param user User address.
     /// @return state game state.
     function getGameState(address user) external view returns (GameState memory state) {
-        uint256 curEpoch = currentEpoch;
-        EpochPoint storage ep = epochPoints[curEpoch];
+        uint256 curRound = currentRound;
+        RoundPoint storage ep = roundPoints[curRound];
 
-        state.epochLength = ep.length;
-        state.currentEpoch = curEpoch;
+        state.roundLength = ep.length;
+        state.currentRound = curRound;
         state.minimumDonation = ep.minDonation;
-        state.epochRewards = ep.availableRewards;
+        state.roundRewards = ep.availableRewards;
         state.totalDonated = ep.totalDonated;
         state.totalClaimed = ep.totalClaimed;
 
-        uint256 epochStart = epochPoints[curEpoch - 1].endTime;
-        state.epochEndTime = epochStart + ep.length;
+        uint256 roundStart = roundPoints[curRound - 1].endTime;
+        state.roundEndTime = roundStart + ep.length;
 
-        if (block.timestamp < state.epochEndTime) {
-            state.secondsRemaining = state.epochEndTime - block.timestamp;
+        if (block.timestamp < state.roundEndTime) {
+            state.secondsRemaining = state.roundEndTime - block.timestamp;
         }
 
         state.incentiveBalance = IERC20(incentiveTokenAddress).balanceOf(address(this));
-        state.userCurrentDonation = epochToDonations[curEpoch][user];
+        state.userCurrentDonation = roundToDonations[curRound][user];
 
         if (state.totalDonated > 0 && state.userCurrentDonation > 0) {
             state.userCurrentShare = (state.userCurrentDonation * 1e18) / state.totalDonated;
         }
 
-        uint256 claimEpoch = curEpoch - 1;
-        state.hasClaimed = epochToClaimed[claimEpoch][user] > 0;
+        uint256 claimRound = curRound - 1;
+        state.hasClaimed = roundToClaimed[claimRound][user] > 0;
 
-        if (epochPoints[claimEpoch].endTime > 0) {
-            uint256 donation = epochToDonations[claimEpoch][user];
-            uint256 totalDon = epochPoints[claimEpoch].totalDonated;
+        if (roundPoints[claimRound].endTime > 0) {
+            uint256 donation = roundToDonations[claimRound][user];
+            uint256 totalDon = roundPoints[claimRound].totalDonated;
             if (donation > 0 && totalDon > 0) {
-                state.userClaimable = (donation * epochPoints[claimEpoch].availableRewards) / totalDon;
+                state.userClaimable = (donation * roundPoints[claimRound].availableRewards) / totalDon;
             }
         }
 
         state.canPlayGame = (
-            state.userCurrentDonation == 0 && state.incentiveBalance >= state.epochRewards
-                && block.timestamp < state.epochEndTime
+            state.userCurrentDonation == 0 && state.incentiveBalance >= state.roundRewards
+                && block.timestamp < state.roundEndTime
         );
     }
 
@@ -518,7 +518,7 @@ contract DerolasAuction {
     /// @return nonces Current donations value.
     function getMultisigNonces(address multisig) external view virtual returns (uint256[] memory nonces) {
         nonces = new uint256[](1);
-        nonces[0] = epochToDonations[currentEpoch][multisig];
+        nonces[0] = roundToDonations[currentRound][multisig];
     }
 
     /// @dev Checks if the service multisig liveness ratio passes the defined liveness threshold.
