@@ -20,7 +20,7 @@ contract TestDerolasAuctionContract is Test {
 
     // Test parameters
     address public whaleAddress = 0xC8F7030a4e25585624e2Fc792255a547255Cd77c;
-    uint256 topUpAmount = 1e18; // 1 Incentive Token
+    uint256 topUpAmount = 2e18; // 2 Incentive Token
 
     function setUp() public {
         c = new DerolasAuction(
@@ -66,10 +66,24 @@ contract TestDerolasAuctionContract is Test {
         assertEq(totalUnclaimed, 0, "Total unclaimed incentives should be zero initially");
     }
 
-    function testGetRoundProgress() public view {
+    function testGetRoundProgress() public {
         // Check that the round progress is zero initially
         uint256 roundProgress = c.getRoundProgress();
         assertEq(roundProgress, 0, "Round progress should be zero initially");
+        // we fast-forward to 1 block after the round length
+        vm.roll(block.number + roundLength + 1);
+        roundProgress = c.getRoundProgress();
+        assertEq(roundProgress, 100, "Round progress should be 100% after round end");
+    }
+
+    function testGetRemainingRoundLength() public {
+        // Check that the remaining round length is equal to the round length initially
+        uint256 remainingRoundLength = c.getRemainingRoundLength();
+        assertEq(remainingRoundLength, roundLength, "Remaining round length should match initial round length");
+        // we fastforward to 1 block after the round length
+        vm.roll(block.number + roundLength + 1);
+        remainingRoundLength = c.getRemainingRoundLength();
+        assertEq(remainingRoundLength, 0, "Remaining round length should be zero after round end");
     }
 
     function testGetBlocksSinceRoundEnd() public view {
@@ -105,5 +119,74 @@ contract TestDerolasAuctionContract is Test {
         // Verify the donation was successful
         GameState memory gameState = c.getGameState(whaleAddress);
         assertEq(gameState.totalDonated, minimumDonation, "Total donated should match");
+        assertEq(c.getCurrentShare(address(this)), 1e18, "Current share should be 100% after donation");
+    }
+
+    function testCanEndRound() public {
+        // Check that the round can be ended after a donation
+        // fast-forward to the block after the round length
+        GameState memory firstGameState = c.getGameState(whaleAddress);
+        vm.roll(block.number + roundLength + 1);
+        c.endRound();
+        GameState memory secondGameState = c.getGameState(whaleAddress);
+        assertEq(
+            secondGameState.currentRound,
+            firstGameState.currentRound + 1,
+            "Epoch should increment after ending the round"
+        );
+    }
+
+    function testDonorCanClaim() public {
+        // Check that the round cannot be ended without donations
+        uint256 initialBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
+        assertTrue(initialBalance == 0, "Initial balance should be zero before claiming");
+        this.testDonateWithIncentives(); // Ensure a donation has been made
+        this.testCanEndRound(); // Ensure the round can be ended
+        assertEq(
+            c.claimable(address(this)),
+            availableRewards,
+            "Claimable incentives should be greater than zero after donation"
+        );
+        c.claim();
+        uint256 finalBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
+        assertEq(finalBalance, availableRewards, "Final balance should be equal to available rewards after claiming");
+        assertEq(c.claimable(address(this)), 0, "Claimable incentives should be zero after claiming");
+    }
+
+    function testChangeOwner() public {
+        // Check that the owner can be changed
+        address newOwner = address(0x123);
+        c.changeOwner(newOwner);
+        assertEq(c.owner(), newOwner, "Owner should be changed to the new address");
+    }
+
+    function testChangeParams() public {
+        // Check that the parameters can be changed
+        uint256 newMinimumDonation = 2000000000000000; // 2 wei
+        uint256 newAvailableRewards = 2e18; // 2 Incentive Tokens
+        uint256 newRoundLength = 120; // blocks
+
+        c.changeParams(newAvailableRewards, newRoundLength, newMinimumDonation);
+
+        this.testCanEndRound(); // Ensure the round can be ended after changing parameters
+        GameState memory gameState = c.getGameState(address(this));
+        assertEq(gameState.minimumDonation, newMinimumDonation, "Minimum donation should be updated");
+    }
+
+    // tests for activity of multisig nonces
+    function testGetMultiSigNonces() public view {
+        // Check that the multisig nonces are initialized correctly
+        uint256[] memory nonce = c.getMultisigNonces(address(this));
+        assertEq(nonce[0], 0, "Nonce should be zero initially");
+    }
+
+    function testMultiSigNonceIncrements() public {
+        // Check that the multisig nonce increments correctly
+        uint256[] memory initialNonce = c.getMultisigNonces(address(this));
+        assertFalse(c.isRatioPass(initialNonce, initialNonce, 0), "isRatioPass should return false before increment");
+        this.testDonorCanClaim(); // Ensure a donation has been made to trigger nonce increment
+        uint256[] memory updatedNonce = c.getMultisigNonces(address(this));
+        assertEq(updatedNonce[0], initialNonce[0] + minimumDonation, "Nonce should increment by 1");
+        assertTrue(c.isRatioPass(updatedNonce, initialNonce, 0), "isRatioPass should return true after increment");
     }
 }
