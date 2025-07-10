@@ -28,8 +28,25 @@ jobs:
         with:
           version: nightly
 
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22.10.0'
+
+      - name: Ensure Yarn is installed
+        run: npm install --global yarn
+
+      - name: Install
+        run: make install
+
+      - name: Run formatters
+        run: make fmt
+
+      - name: Run linters
+        run: make lint
+
       #- name: Check gas snapshots
       #  run: forge snapshot --check
 
       - name: Run tests
-        run: forge test
+        run: make tests

@@ -13,12 +13,15 @@ contract MockStakingInstance {
         activityChecker = _activityChecker;
     }
 
-    function checkpoint() external returns (
-        uint256[] memory serviceIds,
-        uint256[] memory eligibleServiceIds,
-        uint256[] memory eligibleServiceRewards,
-        uint256[] memory evictServiceIds
-    ) {
+    function checkpoint()
+        external
+        returns (
+            uint256[] memory serviceIds,
+            uint256[] memory eligibleServiceIds,
+            uint256[] memory eligibleServiceRewards,
+            uint256[] memory evictServiceIds
+        )
+    {
         lastCheckpointTime = block.timestamp;
         return (new uint256[](0), new uint256[](0), new uint256[](0), new uint256[](0));
     }
@@ -26,4 +29,4 @@ contract MockStakingInstance {
     function tsCheckpoint() external view returns (uint256) {
         return lastCheckpointTime;
     }
-} 
+}

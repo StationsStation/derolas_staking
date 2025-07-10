@@ -1,5 +1,6 @@
 cache/
 out/
+node_modules/
 
 # misc
 .DS_Store

@@ -57,7 +57,9 @@ struct ServiceInfo {
 
 /// @title StakingManager - Smart contract for managing minimal effort service staking
 abstract contract StakingManager is ERC721TokenReceiver {
-    event CreatedAndStaked(address indexed sender, uint256 serviceId, address indexed multisig, address stakingInstance);
+    event CreatedAndStaked(
+        address indexed sender, uint256 serviceId, address indexed multisig, address stakingInstance
+    );
     event Staked(address indexed sender, uint256 serviceId, address indexed multisig, address stakingInstance);
     event Unstaked(address indexed sender, uint256 serviceId, address indexed multisig, address stakingInstance);
     event Claimed(address indexed sender, uint256 serviceId, address indexed multisig, address stakingInstance);
@@ -114,8 +116,10 @@ abstract contract StakingManager is ERC721TokenReceiver {
         bytes32 _configHash
     ) {
         // Check for zero addresses
-        if (_serviceManager == address(0) || _olas == address(0) || _stakingFactory == address(0) ||
-            _safeMultisig == address(0) || _fallbackHandler == address(0)) {
+        if (
+            _serviceManager == address(0) || _olas == address(0) || _stakingFactory == address(0)
+                || _safeMultisig == address(0) || _fallbackHandler == address(0)
+        ) {
             revert ZeroAddress();
         }
 
@@ -141,10 +145,10 @@ abstract contract StakingManager is ERC721TokenReceiver {
     /// @param minStakingDeposit Min staking deposit value.
     /// @return serviceId Minted service Id.
     /// @return multisig Service multisig.
-    function _createAndDeploy(
-        address token,
-        uint256 minStakingDeposit
-    ) internal returns (uint256 serviceId, address multisig) {
+    function _createAndDeploy(address token, uint256 minStakingDeposit)
+        internal
+        returns (uint256 serviceId, address multisig)
+    {
         // Set agent params
         IService.AgentParams[] memory agentParams = new IService.AgentParams[](NUM_AGENT_INSTANCES);
         agentParams[0] = IService.AgentParams(uint32(NUM_AGENT_INSTANCES), uint96(minStakingDeposit));
@@ -158,8 +162,8 @@ abstract contract StakingManager is ERC721TokenReceiver {
         instances[0] = msg.sender;
 
         // Create a service owned by this contract
-        serviceId = IService(serviceManager).create(address(this), token, configHash, agentIds,
-            agentParams, uint32(THRESHOLD));
+        serviceId =
+            IService(serviceManager).create(address(this), token, configHash, agentIds, agentParams, uint32(THRESHOLD));
 
         // Check msg.value
         if (msg.value != 1 + NUM_AGENT_INSTANCES) {
@@ -175,8 +179,8 @@ abstract contract StakingManager is ERC721TokenReceiver {
         // Prepare Safe multisig data
         uint256 localNonce = _nonce;
         uint256 randomNonce = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, localNonce)));
-        bytes memory data = abi.encodePacked(address(0), fallbackHandler, address(0), address(0), uint256(0),
-            randomNonce, "0x");
+        bytes memory data =
+            abi.encodePacked(address(0), fallbackHandler, address(0), address(0), uint256(0), randomNonce, "0x");
         // Deploy the service
         multisig = IService(serviceManager).deploy(serviceId, safeMultisig, data);
 
@@ -216,7 +220,7 @@ abstract contract StakingManager is ERC721TokenReceiver {
         }
 
         // Check for staking instance validity
-        if(!IStaking(stakingFactory).verifyInstance(stakingInstance)) {
+        if (!IStaking(stakingFactory).verifyInstance(stakingInstance)) {
             revert WrongStakingInstance(stakingInstance);
         }
 
@@ -234,8 +238,10 @@ abstract contract StakingManager is ERC721TokenReceiver {
         uint256 threshold = IStaking(stakingInstance).threshold();
         // Check for number of agent instances that must be equal to one,
         // since msg.sender is the only service multisig owner
-        if ((numAgentInstances > 0 &&  numAgentInstances != NUM_AGENT_INSTANCES) ||
-            (threshold > 0 && threshold != THRESHOLD)) {
+        if (
+            (numAgentInstances > 0 && numAgentInstances != NUM_AGENT_INSTANCES)
+                || (threshold > 0 && threshold != THRESHOLD)
+        ) {
             revert WrongStakingInstance(stakingInstance);
         }
 
@@ -275,7 +281,7 @@ abstract contract StakingManager is ERC721TokenReceiver {
         }
 
         // Get the service multisig
-        (, serviceInfo.multisig, , , , , ) = IService(serviceRegistry).mapServices(serviceId);
+        (, serviceInfo.multisig,,,,,) = IService(serviceRegistry).mapServices(serviceId);
 
         // Check that the service multisig owner is msg.sender
         uint256 numAgentInstances = IStaking(stakingInstance).numAgentInstances();
