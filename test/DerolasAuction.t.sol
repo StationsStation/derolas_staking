@@ -8,6 +8,7 @@ import {IToken} from "src/interfaces/IToken.sol";
 contract TestDerolasAuctionContract is Test {
     DerolasAuction public c;
 
+    // setup parameters
     uint256 public minimumDonation = 1000000000000000;
     address public balancerRouter = 0x3f170631ed9821Ca51A59D996aB095162438DC10;
     address public poolId = 0xaF5B7999F491C42C05B5a2CA80f1d200D617cC8c;
@@ -18,8 +19,9 @@ contract TestDerolasAuctionContract is Test {
     uint256 public epochLength = 90; // blocks
     uint256 public maxCheckpointDelay = 10; // blocks
 
-    // olas whale address
+    // Test parameters
     address public whaleAddress = 0xC8F7030a4e25585624e2Fc792255a547255Cd77c;
+    uint256 topUpAmount = 1e18; // 1 Incentive Token
 
     function setUp() public {
         c = new DerolasAuction(
@@ -52,12 +54,21 @@ contract TestDerolasAuctionContract is Test {
     function testTopupIncentivesBalance() public {
         // Check that the incentives can be topped up we impersonate a user who tops up the incentives
         vm.startPrank(whaleAddress);
-        IToken(incentiveTokenAddress).approve(address(c), 1e18); // Approve 1 OLAS
-        uint256 topUpAmount = 1e18; // 1 OLAS
+        IToken(incentiveTokenAddress).approve(address(c), topUpAmount); // Approve 1 OLAS
         c.topUpIncentiveBalance(topUpAmount);
 
         // Verify the incentives were topped up
         GameState memory gameState = c.getGameState(whaleAddress);
         assertEq(gameState.incentiveBalance, topUpAmount, "Available rewards should match after top-up");
+    }
+
+    function testDonateWithIncentives() public {
+        // Simulate a successful donation after topping up incentives
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+
+        c.donate{value: topUpAmount}();
+        // Verify the donation was successful
+        GameState memory gameState = c.getGameState(whaleAddress);
+        assertEq(gameState.incentiveBalance, topUpAmount, "Incentive balance should match after donation");
     }
 }
