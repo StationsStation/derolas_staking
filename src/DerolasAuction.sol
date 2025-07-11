@@ -76,12 +76,7 @@ contract DerolasAuction {
     );
     event UnclaimedRewardsDonated(uint256 indexed amount);
     event RewardsClaimed(address indexed donatorAddress, uint256 indexed amount);
-    event ParamsUpdated(
-        uint256 indexed nextRound,
-        uint256 availableRewards,
-        uint256 roundLength,
-        uint256 minDonation
-    );
+    event ParamsUpdated(uint256 indexed nextRound, uint256 availableRewards, uint256 roundLength, uint256 minDonation);
 
     // Assets in pool
     uint256 public immutable assetsInPool;
@@ -251,11 +246,7 @@ contract DerolasAuction {
     /// @param newRoundRewards New round rewards.
     /// @param newRoundLength New round length.
     /// @param minDonation New minimum donation.
-    function changeParams(
-        uint256 newRoundRewards,
-        uint256 newRoundLength,
-        uint256 minDonation
-    ) external {
+    function changeParams(uint256 newRoundRewards, uint256 newRoundLength, uint256 minDonation) external {
         require(msg.sender == owner, "Unauthorized account");
 
         uint256 nextRound = currentRound + 1;
@@ -281,9 +272,10 @@ contract DerolasAuction {
 
         // Calculate rewards
         uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
+        uint256 claimedAmount = roundToClaimed[claimRound][account];
         require(IToken(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
 
-        return amount;
+        return amount - claimedAmount;
     }
 
     /// @dev Estimates ticket percentage.
@@ -358,17 +350,14 @@ contract DerolasAuction {
 
     /// @dev Gets remaining round length progress.
     /// @return remainingRoundLength Remaining round length.
-    /// @return extendedRoundTime extended round time, if round length was reached.
-    function getRemainingRoundLength() public view returns (uint256 remainingRoundLength, uint256 extendedRoundTime) {
+    function getRemainingRoundLength() public view returns (uint256 remainingRoundLength) {
         uint256 curRound = currentRound;
         uint256 blocksSinceRoundEnd = block.number - roundPoints[curRound - 1].endBlock;
-
         uint256 curRoundLength = roundPoints[curRound].length;
-        if (blocksSinceRoundEnd > curRoundLength) {
-            extendedRoundTime = blocksSinceRoundEnd - curRoundLength;
-        } else {
-            remainingRoundLength = curRoundLength - blocksSinceRoundEnd;
+        if (blocksSinceRoundEnd >= curRoundLength) {
+            return 0; // Round has ended
         }
+        remainingRoundLength = curRoundLength - blocksSinceRoundEnd;
     }
 
     /// @dev Gets round progress.
