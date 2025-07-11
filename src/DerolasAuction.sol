@@ -383,6 +383,15 @@ contract DerolasAuction {
         );
     }
 
+    /// @dev Recovers the incentive token balance.
+    /// @notice This function allows the owner to recover the incentive token balance from the contract.
+    function recoverIncentiveTokenBalance() external {
+        require(msg.sender == owner, "Unauthorized account");
+        uint256 incentiveBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
+        require(incentiveBalance > 0, "No incentive token balance to recover");
+        SafeTransferLib.safeTransfer(incentiveTokenAddress, owner, incentiveBalance);
+    }
+
     /// @dev Gets service multisig nonces.
     /// @param multisig Service multisig address.
     /// @return nonces Current donations value.
