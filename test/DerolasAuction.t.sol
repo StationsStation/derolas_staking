@@ -57,6 +57,7 @@ contract TestDerolasAuctionContract is Test {
         // Verify the incentives were topped up
         GameState memory gameState = c.getGameState(whaleAddress);
         assertEq(gameState.incentiveBalance, topUpAmount, "Available rewards should match after top-up");
+        vm.stopPrank();
     }
 
     function testCannotTopupZeroIncentives() public {
@@ -279,5 +280,26 @@ contract TestDerolasAuctionContract is Test {
         this.testCanChangeOwner(); // Ensure the owner is set
         vm.expectRevert("Unauthorized account");
         this.testChangeParams(); // Ensure parameters are set
+    }
+
+    function testCanRecoverIncentiveBalance() public {
+        // Check that the owner can recover incentives
+        vm.expectRevert("No incentive token balance to recover");
+        c.recoverIncentiveTokenBalance();
+
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        uint256 initialBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
+        assertEq(initialBalance, 0, "Initial balance should be zero before recovery");
+        c.recoverIncentiveTokenBalance();
+        uint256 finalBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
+        assertGt(finalBalance, 0, "Final balance should be greater than zero after recovering incentives");
+    }
+
+    function testCannotRecoverIncentiveBalanceWithoutPermission() public {
+        // Check that a non-owner cannot recover incentives
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        this.testCanChangeOwner(); // Ensure the owner is set
+        vm.expectRevert("Unauthorized account");
+        c.recoverIncentiveTokenBalance(); // Attempt to recover incentives
     }
 }
