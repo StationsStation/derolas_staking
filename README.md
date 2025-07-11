@@ -24,6 +24,13 @@ git clone https://github.com/StationsStation/derolas_staking.git --recursive
 cd derolas_staking
 make install
 ```
+## Documentation
+
+```bash
+make doc
+```
+
+You can then navigate to `http://0.0.0.0:4000/` in your web browser to view the documentation.
 
 ## Development
 
