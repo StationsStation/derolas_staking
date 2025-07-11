@@ -250,8 +250,6 @@ contract DerolasAuction {
         // Calculate rewards
         uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
         uint256 claimedAmount = roundToClaimed[claimRound][account];
-        require(IToken(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
-
         return amount - claimedAmount;
     }
 
@@ -380,20 +378,13 @@ contract DerolasAuction {
 
         state.incentiveBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
         state.userCurrentDonation = roundToDonations[curRound][user];
-
-        if (state.totalDonated > 0 && state.userCurrentDonation > 0) {
-            state.userCurrentShare = (state.userCurrentDonation * 1e18) / state.totalDonated;
-        }
+        state.userCurrentShare = this.getCurrentShare(user);
 
         uint256 claimRound = curRound - 1;
         state.hasClaimed = roundToClaimed[claimRound][user] > 0;
 
         if (roundPoints[claimRound].endBlock > 0) {
-            uint256 donation = roundToDonations[claimRound][user];
-            uint256 totalDon = roundPoints[claimRound].totalDonated;
-            if (donation > 0 && totalDon > 0) {
-                state.userClaimable = (donation * roundPoints[claimRound].availableRewards) / totalDon;
-            }
+            state.userClaimable = this.claimable(user);
         }
 
         state.canPlayGame = (

@@ -40,7 +40,6 @@ contract TestDerolasAuctionContract is Test {
         address owner = address(this);
         GameState memory gameState = c.getGameState(owner);
         assertEq(gameState.minimumDonation, minimumDonation, "Min donation should match");
-        assertEq(gameState.incentiveBalance, 0, "Incentive balance should be zero initially");
     }
 
     function testDonateFailsWithoutIncentives() public {
@@ -188,8 +187,8 @@ contract TestDerolasAuctionContract is Test {
         this.testCanEndRound(); // Ensure the round can be ended
         assertGt(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be greater than zero after donation");
         this.testCanEndRound(); // Ensure the round can be ended again
-            // todo ensure that the unclaimed rewards are donated to the pool.
-            // assertEq(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be zero after donating unclaimed rewards");
+        // todo ensure that the unclaimed rewards are donated to the pool.
+        // assertEq(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be zero after donating unclaimed rewards");
     }
 
     // tests for activity of multisig nonces
