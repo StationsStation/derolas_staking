@@ -57,6 +57,9 @@ contract DerolasAuction {
     event ParamsUpdated(uint256 indexed nextRound, uint256 availableRewards, uint256 roundLength, uint256 minDonation);
     event EthDonatedToBalancer(uint256 indexed amount);
 
+    // Minimum balance donation amount is the minimum balancer trade amount in a pool operation
+    uint256 public immutable MINIMUM_BALANCE_DONATION_AMOUNT = 1_000_000;
+
     // Assets in pool
     uint256 public immutable assetsInPool;
     // Incentive token index
@@ -121,7 +124,10 @@ contract DerolasAuction {
         incentiveTokenAddress = _incentiveTokenAddress;
         incentiveTokenIndex = _incentiveTokenIndex;
         wethIndex = _wethIndex;
+
+        MINIMUM_BALANCE_DONATION_AMOUNT = IBalancerVaultAdmin(balancerVaultAdmin).getMinimumTradeAmount();
         permit2 = IBalancerRouter(_balancerRouter).getPermit2();
+
         roundPoints[1].availableRewards = _availableRewards;
         roundPoints[1].length = _roundLength;
         roundPoints[1].minDonation = _minDonation;
@@ -134,13 +140,10 @@ contract DerolasAuction {
     /// @param claimRound Claim round.
     function _donateUnclaimedIncentiveTokens(uint256 claimRound) internal {
         uint256 unclaimedAmount = roundPoints[claimRound].availableRewards - roundPoints[claimRound].totalClaimed;
-        if (unclaimedAmount == 0) {
+        if (unclaimedAmount < MINIMUM_BALANCE_DONATION_AMOUNT) {
             return;
         }
-        uint256 minimumBalanceDonationAmount = IBalancerVaultAdmin(balancerVaultAdmin).getMinimumTradeAmount();
-        if (unclaimedAmount < minimumBalanceDonationAmount) {
-            return;
-        }
+
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[incentiveTokenIndex] = unclaimedAmount;
 
@@ -149,21 +152,20 @@ contract DerolasAuction {
         IPermit2(permit2).approve(
             incentiveTokenAddress, balancerRouter, uint160(unclaimedAmount), uint48(block.timestamp + 1 days)
         );
+
         IBalancerRouter(balancerRouter).donate(poolId, amountsIn, true, "");
 
         emit UnclaimedIncentiveTokensDonated(unclaimedAmount);
     }
 
+    /// @dev Donates collected contributions.
     function _donateEthContribution() internal {
         // we check the whole balance of the contract and donate it to the balancer pool
         uint256 contributionAmount = address(this).balance;
-        if (contributionAmount == 0) {
+        if (contributionAmount < MINIMUM_BALANCE_DONATION_AMOUNT) {
             return;
         }
-        uint256 minimumBalanceDonationAmount = IBalancerVaultAdmin(balancerVaultAdmin).getMinimumTradeAmount();
-        if (contributionAmount < minimumBalanceDonationAmount) {
-            return;
-        }
+
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[wethIndex] = contributionAmount;
         IBalancerRouter(balancerRouter).donate{value: contributionAmount}(poolId, amountsIn, true, "");
