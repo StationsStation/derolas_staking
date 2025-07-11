@@ -63,10 +63,10 @@ echo "${green}Deployment of: $contractArgs${reset}"
 # Deploy the contract and capture the address
 execCmd="forge create --broadcast --rpc-url $networkURL$API_KEY $walletArgs $contractArgs"
 deploymentOutput=$($execCmd)
-derolasAuctionAddress=$(echo "$deploymentOutput" | grep 'Deployed to:' | awk '{print $3}')
+stakingManagerAddress=$(echo "$deploymentOutput" | grep 'Deployed to:' | awk '{print $3}')
 
 # Get output length
-outputLength=${#derolasAuctionAddress}
+outputLength=${#stakingManagerAddress}
 
 # Check for the deployed address
 if [ $outputLength != 42 ]; then
@@ -75,11 +75,11 @@ if [ $outputLength != 42 ]; then
 fi
 
 # Write new deployed contract back into JSON
-echo "$(jq '. += {"derolasAuctionAddress":"'$derolasAuctionAddress'"}' $globals)" > $globals
+echo "$(jq '. += {"stakingManagerAddress":"'$stakingManagerAddress'"}' $globals)" > $globals
 
 # Verify contract
 if [ "$contractVerification" == "true" ]; then
-  contractParams="$derolasAuctionAddress $contractPath --constructor-args $(cast abi-encode "constructor(address,address,address,address,address,uint256,bytes32)" $constructorArgs)"
+  contractParams="$stakingManagerAddress $contractPath --constructor-args $(cast abi-encode "constructor(address,address,address,address,address,uint256,bytes32)" $constructorArgs)"
   echo "Verification contract params: $contractParams"
 
   echo "${green}Verifying contract on Etherscan...${reset}"
@@ -92,4 +92,4 @@ if [ "$contractVerification" == "true" ]; then
   fi
 fi
 
-echo "${green}Contract deployed at: $derolasAuctionAddress${reset}"
+echo "${green}Contract deployed at: $stakingManagerAddress${reset}"
