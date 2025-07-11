@@ -26,21 +26,6 @@ fallbackHandler=$(jq -r '.fallbackHandler' $globals)
 agentId=$(jq -r '.agentId' $globals)
 configHash=$(jq -r '.configHash' $globals)
 
-# Getting L1 Alchemy API key
-if [ $chainId == 1 ]; then
-  API_KEY=$ALCHEMY_API_KEY_MAINNET
-  if [ "$API_KEY" == "" ]; then
-      echo "set ALCHEMY_API_KEY_MAINNET env variable"
-      exit 0
-  fi
-elif [ $chainId == 11155111 ]; then
-    API_KEY=$ALCHEMY_API_KEY_SEPOLIA
-    if [ "$API_KEY" == "" ]; then
-        echo "set ALCHEMY_API_KEY_SEPOLIA env variable"
-        exit 0
-    fi
-fi
-
 contractPath="src/StakingManager.sol:StakingManager"
 constructorArgs="$serviceManager $olasAddress $stakingFactory $safeMultisig $fallbackHandler $agentId $configHash"
 contractArgs="$contractPath --constructor-args $constructorArgs"

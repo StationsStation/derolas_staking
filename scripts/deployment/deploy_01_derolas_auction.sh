@@ -29,21 +29,6 @@ wethIndex=$(jq -r '.wethIndex' $globals)
 availableRewards=$(jq -r '.availableRewards' $globals)
 roundLength=$(jq -r '.roundLength' $globals)
 
-# Getting L1 Alchemy API key
-if [ $chainId == 1 ]; then
-  API_KEY=$ALCHEMY_API_KEY_MAINNET
-  if [ "$API_KEY" == "" ]; then
-      echo "set ALCHEMY_API_KEY_MAINNET env variable"
-      exit 0
-  fi
-elif [ $chainId == 11155111 ]; then
-    API_KEY=$ALCHEMY_API_KEY_SEPOLIA
-    if [ "$API_KEY" == "" ]; then
-        echo "set ALCHEMY_API_KEY_SEPOLIA env variable"
-        exit 0
-    fi
-fi
-
 contractPath="src/DerolasAuction.sol:DerolasAuction"
 constructorArgs="$minDonation $balancerRouter $balancerVaultAdmin $poolId $assetsInPool $olasAddress $incentiveTokenIndex $wethIndex $availableRewards $roundLength"
 contractArgs="$contractPath --constructor-args $constructorArgs"
