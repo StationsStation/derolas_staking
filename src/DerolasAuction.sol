@@ -2,33 +2,10 @@
 pragma solidity ^0.8.30;
 
 import {IToken} from "./interfaces/IToken.sol";
+import {IPermit2} from "./interfaces/IPermit2.sol";
+import {IBalancerRouter} from "./interfaces/IBalancerRouter.sol";
+
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
-
-/// @title Balancer Router Interface
-/// @notice Interface for interacting with Balancer's router contract
-interface IBalancerRouter {
-    /// @dev Donates tokens to a pool.
-    /// @param pool Pool address.
-    /// @param amountsIn Amounts of tokens to donate.
-    /// @param wethIsEth Whether WETH is ETH.
-    /// @param userData User data.
-    function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
-
-    /// @dev Gets permit2 address.
-    /// @return permit2 address.
-    function getPermit2() external view returns (address);
-}
-
-/// @title Permit2 Interface
-/// @notice Interface for interacting with Permit2 contract
-interface IPermit2 {
-    /// @dev Approves a token for a spender.
-    /// @param token Token address.
-    /// @param spender Account address that will be able to transfer tokens on behalf of the owner.
-    /// @param amount Token amount.
-    /// @param expiration Expiration timestamp.
-    function approve(address token, address spender, uint160 amount, uint48 expiration) external;
-}
 
 /// @dev Round point struct.
 /// @notice Stores information about a specific round
@@ -294,7 +271,7 @@ contract DerolasAuction {
             return 1e18; // full share
         }
 
-        return (donation * 1e18) / totalRoundDonations;
+        return (donation * 1e18) / (totalRoundDonations + donation);
     }
 
     /// @dev Donates to the auction contract.

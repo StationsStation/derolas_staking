@@ -101,8 +101,15 @@ contract TestDerolasAuctionContract is Test {
     function testEstimateTicketPercentage() public {
         // Check that the estimated ticket percentage from a donation works correctly
         this.testTopupIncentivesBalance(); // Ensure incentives are topped up
-        uint256 estimatedPercentage = c.estimateTicketPercentage(minimumDonation);
-        assertEq(estimatedPercentage, 1e18, "Estimated ticket percentage should be 100% as no donations exist yet");
+        uint256 initialEstimatedPercentage = c.estimateTicketPercentage(minimumDonation);
+        assertEq(initialEstimatedPercentage, 1e18, "Estimated ticket percentage should be 100% as no donations yet");
+        c.donate{value: minimumDonation}();
+        uint256 finalEstimatedPercentage = c.estimateTicketPercentage(minimumDonation);
+        assertEq(
+            finalEstimatedPercentage,
+            initialEstimatedPercentage / 2,
+            "Estimated ticket percentage should decrease after donation"
+        );
     }
 
     function testClaimable() public view {
@@ -114,10 +121,11 @@ contract TestDerolasAuctionContract is Test {
     function testDonateWithIncentives() public {
         // Simulate a successful donation after topping up incentives
         this.testTopupIncentivesBalance(); // Ensure incentives are topped up
-
+        GameState memory gameState = c.getGameState(whaleAddress);
+        assertEq(gameState.totalDonated, 0, "Initial total donated should be zero");
         c.donate{value: minimumDonation}();
         // Verify the donation was successful
-        GameState memory gameState = c.getGameState(whaleAddress);
+        gameState = c.getGameState(whaleAddress);
         assertEq(gameState.totalDonated, minimumDonation, "Total donated should match");
         assertEq(c.getCurrentShare(address(this)), 1e18, "Current share should be 100% after donation");
     }

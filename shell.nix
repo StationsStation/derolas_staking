@@ -10,6 +10,7 @@ pkgs.mkShell {
   buildInputs = [ 
     pkgs.foundry 
     pkgs.act
+    pkgs.lcov
   ];
 }
 
