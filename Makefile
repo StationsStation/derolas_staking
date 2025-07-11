@@ -30,11 +30,14 @@ tests:
 		--fork-url https://mainnet.base.org
 
 lcov:
+	mkdir -p coverage
 	forge coverage -vvvv \
 		--fork-url https://mainnet.base.org \
 		--report lcov \
 		-r coverage/lcov.info
-	genhtml coverage/lcov.info -o coverage/html
+	genhtml coverage/lcov.info --branch-coverage \
+		--ignore-errors inconsistent \
+		-o coverage/html
 
 ci:
 	act

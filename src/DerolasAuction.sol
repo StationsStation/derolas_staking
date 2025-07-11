@@ -128,12 +128,6 @@ contract DerolasAuction {
             return;
         }
 
-        // TODO This must be resolved to not revert
-        require(
-            IToken(incentiveTokenAddress).balanceOf(address(this)) >= unclaimedAmount,
-            "Not enough incentive balance to donate"
-        );
-
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[incentiveTokenIndex] = unclaimedAmount;
 
@@ -185,18 +179,14 @@ contract DerolasAuction {
         _locked = 2;
 
         uint256 claimRound = currentRound - 1;
-        require(roundPoints[claimRound].endBlock > 0, "Round not ended yet");
-        require(roundToClaimed[claimRound][msg.sender] == 0, "Already claimed");
-
         uint256 donation = roundToDonations[claimRound][msg.sender];
-        require(donation > 0, "No donation found");
-
         uint256 totalRoundDonations = roundPoints[claimRound].totalDonated;
-        require(totalRoundDonations > 0, "No donations this round");
+
+        require(roundToClaimed[claimRound][msg.sender] == 0, "Already claimed");
+        require(donation > 0, "No donation found");
 
         uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
         require(amount > 0, "Nothing to claim");
-        require(IToken(incentiveTokenAddress).balanceOf(address(this)) >= amount, "Not enough rewards");
 
         roundToClaimed[claimRound][msg.sender] = amount;
         roundPoints[claimRound].totalClaimed += amount;

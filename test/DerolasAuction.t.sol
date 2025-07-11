@@ -59,6 +59,12 @@ contract TestDerolasAuctionContract is Test {
         assertEq(gameState.incentiveBalance, topUpAmount, "Available rewards should match after top-up");
     }
 
+    function testCannotTopupZeroIncentives() public {
+        // Check that topping up zero incentives fails
+        vm.expectRevert("Amount must be greater than 0");
+        c.topUpIncentiveBalance(0);
+    }
+
     function testGetTotalUnclaimed() public view {
         // Check that the total unclaimed incentives are zero initially
         uint256 totalUnclaimed = c.getTotalUnclaimed();
@@ -111,6 +117,18 @@ contract TestDerolasAuctionContract is Test {
         );
     }
 
+    function testCannotEstimateTicketPercentageWithoutIncentives() public {
+        // Check that estimating ticket percentage fails without incentives
+        vm.expectRevert("Not enough rewards to play the game");
+        c.estimateTicketPercentage(minimumDonation);
+    }
+
+    function testCannotEstimateTicketPercentageWithLessThanMinimumDonation() public {
+        // Check that estimating ticket percentage fails with less than minimum donation
+        vm.expectRevert("Minimum donation not met");
+        c.estimateTicketPercentage(minimumDonation - 1);
+    }
+
     function testClaimable() public view {
         // Check that the claimable incentives are zero initially
         uint256 claimableIncentives = c.claimable(address(this));
@@ -129,6 +147,19 @@ contract TestDerolasAuctionContract is Test {
         assertEq(c.getCurrentShare(address(this)), 1e18, "Current share should be 100% after donation");
     }
 
+    function testCannotDonateLessThanMinimum() public {
+        // Check that a donation less than the minimum fails
+        vm.expectRevert("Donation amount is less than the minimum donation");
+        c.donate{value: minimumDonation - 1}();
+    }
+
+    function testCannotDonateTwiceInSameRound() public {
+        // Check that a user cannot donate twice in the same round
+        this.testDonateWithIncentives(); // Ensure a donation has been made
+        vm.expectRevert("Already donated this round");
+        c.donate{value: minimumDonation}(); // Attempt to donate again
+    }
+
     function testCanEndRound() public {
         // Check that the round can be ended after a donation
         // fast-forward to the block after the round length
@@ -141,6 +172,12 @@ contract TestDerolasAuctionContract is Test {
             firstGameState.currentRound + 1,
             "Epoch should increment after ending the round"
         );
+    }
+
+    function testCannotEndRoundEarly() public {
+        // Check that the round cannot be ended early
+        vm.expectRevert("Round not over");
+        c.endRound();
     }
 
     function testDonorCanClaim() public {
@@ -160,24 +197,19 @@ contract TestDerolasAuctionContract is Test {
         assertEq(c.claimable(address(this)), 0, "Claimable incentives should be zero after claiming");
     }
 
-    function testChangeOwner() public {
-        // Check that the owner can be changed
-        address newOwner = address(0x123);
-        c.changeOwner(newOwner);
-        assertEq(c.owner(), newOwner, "Owner should be changed to the new address");
+    function testCannotClaimWithoutDonation() public {
+        // Check that a user cannot claim incentives without making a donation
+        vm.expectRevert("No donation found");
+        c.claim();
     }
 
-    function testChangeParams() public {
-        // Check that the parameters can be changed
-        uint256 newMinimumDonation = 2000000000000000; // 2 wei
-        uint256 newAvailableRewards = 2e18; // 2 Incentive Tokens
-        uint256 newRoundLength = 120; // blocks
-
-        c.changeParams(newAvailableRewards, newRoundLength, newMinimumDonation);
-
-        this.testCanEndRound(); // Ensure the round can be ended after changing parameters
-        GameState memory gameState = c.getGameState(address(this));
-        assertEq(gameState.minimumDonation, newMinimumDonation, "Minimum donation should be updated");
+    function testCannotClaimTwice() public {
+        // Check that a user cannot claim incentives before the round ends
+        this.testDonateWithIncentives(); // Ensure a donation has been made
+        this.testCanEndRound();
+        c.claim();
+        vm.expectRevert("Already claimed");
+        c.claim(); // Attempt to claim again
     }
 
     function testUnclaimedRewardsDonated() public {
@@ -187,8 +219,8 @@ contract TestDerolasAuctionContract is Test {
         this.testCanEndRound(); // Ensure the round can be ended
         assertGt(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be greater than zero after donation");
         this.testCanEndRound(); // Ensure the round can be ended again
-        // todo ensure that the unclaimed rewards are donated to the pool.
-        // assertEq(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be zero after donating unclaimed rewards");
+            // todo ensure that the unclaimed rewards are donated to the pool.
+            // assertEq(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be zero after donating unclaimed rewards");
     }
 
     // tests for activity of multisig nonces
@@ -206,5 +238,46 @@ contract TestDerolasAuctionContract is Test {
         uint256[] memory updatedNonce = c.getMultisigNonces(address(this));
         assertEq(updatedNonce[0], initialNonce[0] + minimumDonation, "Nonce should increment by 1");
         assertTrue(c.isRatioPass(updatedNonce, initialNonce, 0), "isRatioPass should return true after increment");
+    }
+
+    // admin tests
+    function testCanChangeOwner() public {
+        // Check that the owner can change the contract owner
+        address newOwner = address(0x123);
+        c.changeOwner(newOwner);
+        assertEq(c.owner(), newOwner, "Owner should be changed to the new address");
+    }
+
+    function testCannotChangeOwnerWithoutPermission() public {
+        // Check that a non-owner cannot change the contract owner
+        this.testCanChangeOwner(); // Ensure the owner is set
+        vm.expectRevert("Unauthorized account");
+        c.changeOwner(address(this)); // Change back to original owner
+    }
+
+    function testCannotChangeToZeroAddress() public {
+        // Check that the owner cannot change the contract owner to zero address
+        vm.expectRevert("Zero address");
+        c.changeOwner(address(0));
+    }
+
+    function testChangeParams() public {
+        // Check that the parameters can be changed
+        uint256 newMinimumDonation = 2000000000000000; // 2 wei
+        uint256 newAvailableRewards = 2e18; // 2 Incentive Tokens
+        uint256 newRoundLength = 120; // blocks
+
+        c.changeParams(newAvailableRewards, newRoundLength, newMinimumDonation);
+
+        this.testCanEndRound(); // Ensure the round can be ended after changing parameters
+        GameState memory gameState = c.getGameState(address(this));
+        assertEq(gameState.minimumDonation, newMinimumDonation, "Minimum donation should be updated");
+    }
+
+    function testCannotChangeParamsWithoutPermission() public {
+        // Check that a non-owner cannot change the contract parameters
+        this.testCanChangeOwner(); // Ensure the owner is set
+        vm.expectRevert("Unauthorized account");
+        this.testChangeParams(); // Ensure parameters are set
     }
 }
