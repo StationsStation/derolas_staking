@@ -181,6 +181,18 @@ contract TestDerolasAuctionContract is Test {
         assertEq(gameState.minimumDonation, newMinimumDonation, "Minimum donation should be updated");
     }
 
+    function testUnclaimedRewardsDonated() public {
+        // Check that unclaimed rewards are donated to the pool
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        c.donate{value: minimumDonation}(); // Ensure a donation has been made
+        this.testCanEndRound(); // Ensure the round can be ended
+        assertGt(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be greater than zero after donation");
+        this.testCanEndRound(); // Ensure the round can be ended again
+        // todo ensure that the unclaimed rewards are donated to the pool.
+        // assertEq(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be zero after donating unclaimed rewards");
+    
+        }
+
     // tests for activity of multisig nonces
     function testGetMultiSigNonces() public view {
         // Check that the multisig nonces are initialized correctly
