@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {DerolasAuction, GameState} from "src/DerolasAuction.sol";
 import {IToken} from "src/interfaces/IToken.sol";
+import {IBalancerVaultAdmin} from "src/interfaces/IBalancerVaultAdmin.sol";
 
 contract TestDerolasAuctionContract is Test {
     DerolasAuction public c;
@@ -11,6 +12,7 @@ contract TestDerolasAuctionContract is Test {
     // setup parameters
     uint256 public minimumDonation = 1000000000000000;
     address public balancerRouter = 0x3f170631ed9821Ca51A59D996aB095162438DC10;
+    address public balancerVaultAdmin = 0x35fFB749B273bEb20F40f35EdeB805012C539864; // Balancer Vault Admin
     address public poolId = 0xaF5B7999F491C42C05B5a2CA80f1d200D617cC8c;
     uint256 public assetsInPool = 8;
     address public incentiveTokenAddress = 0x54330d28ca3357F294334BDC454a032e7f353416; // OLAS
@@ -21,12 +23,13 @@ contract TestDerolasAuctionContract is Test {
 
     // Test parameters
     address public whaleAddress = 0xC8F7030a4e25585624e2Fc792255a547255Cd77c;
-    uint256 topUpAmount = 2e18; // 2 Incentive Token
+    uint256 public topUpAmount = 2e18; // 2 Incentive Token
 
     function setUp() public {
         c = new DerolasAuction(
             minimumDonation,
             balancerRouter,
+            balancerVaultAdmin,
             poolId,
             assetsInPool,
             incentiveTokenAddress,
@@ -53,12 +56,17 @@ contract TestDerolasAuctionContract is Test {
     function testTopupIncentivesBalance() public {
         // Check that the incentives can be topped up we impersonate a user who tops up the incentives
         vm.startPrank(whaleAddress);
+        GameState memory initialGameState = c.getGameState(whaleAddress);
         IToken(incentiveTokenAddress).approve(address(c), topUpAmount); // Approve 1 OLAS
         c.topUpIncentiveBalance(topUpAmount);
 
         // Verify the incentives were topped up
         GameState memory gameState = c.getGameState(whaleAddress);
-        assertEq(gameState.incentiveBalance, topUpAmount, "Available rewards should match after top-up");
+        assertEq(
+            gameState.incentiveBalance,
+            initialGameState.incentiveBalance + topUpAmount,
+            "Available rewards should match after top-up"
+        );
         vm.stopPrank();
     }
 
@@ -303,5 +311,57 @@ contract TestDerolasAuctionContract is Test {
         this.testCanChangeOwner(); // Ensure the owner is set
         vm.expectRevert("Unauthorized account");
         c.recoverIncentiveTokenBalance(); // Attempt to recover incentives
+    }
+
+    // edge case tests
+    function _multipleDonorsInSameRound(uint256 numDonors, uint256 nonce) public {
+        // Check that multiple donors can donate in the same round
+        for (uint256 i = 0; i < numDonors; i++) {
+            address donor = address(uint160(uint256(keccak256(abi.encodePacked(i + nonce)))));
+            vm.startPrank(donor);
+            vm.deal(donor, minimumDonation); // Fund the donor with minimum donation
+            assertEq(
+                IToken(incentiveTokenAddress).balanceOf(donor), 0, "Donor should have zero incentive balance initially"
+            );
+            c.donate{value: minimumDonation}();
+            vm.stopPrank();
+        }
+        this.testCanEndRound(); // Ensure the round can be ended after multiple donations
+        // check that all donors now have claimable incentives
+        for (uint256 i = 0; i < numDonors; i++) {
+            address donor = address(uint160(uint256(keccak256(abi.encodePacked(i + nonce))))); // Recreate donor address
+            // check that the current share is 1 / numDonors * 1e18
+            assertEq(
+                c.claimable(donor), availableRewards / numDonors, "Claimable incentives should be equal for all donors"
+            );
+            vm.startPrank(donor);
+            c.claim();
+            uint256 finalBalance = IToken(incentiveTokenAddress).balanceOf(donor);
+            assertEq(
+                finalBalance, availableRewards / numDonors, "Final balance should be equal to claimable incentives"
+            );
+            vm.stopPrank();
+        }
+    }
+
+    function testMultipleDonorsInSameRound() public {
+        // Test with 5 donors in the same round
+        uint256 numDonors = 6; // Number of donors to simulate
+        uint256 nonce = 0; // Nonce for unique donor addresses
+        for (uint256 i = 0; i < numDonors; i++) {
+            nonce = nonce + i;
+            this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+            this._multipleDonorsInSameRound(i, nonce);
+        }
+    }
+
+    function testHandlesBalancerEthDonationBelowTradeAmount() public {
+        // test that end round does not fail when balance in eth is below the minimum trade amount
+        // transfer some ETH to the contract
+        uint256 minimumTradeAmount = IBalancerVaultAdmin(balancerVaultAdmin).getMinimumTradeAmount();
+        vm.deal(address(c), minimumTradeAmount - 1); // 0.
+        // Ensure the contract has less than the minimum trade amount in ETH
+        assertLt(address(c).balance, minimumTradeAmount, "Contract should have less than minimum trade amount in ETH");
+        this.testCanEndRound(); // Ensure the round can be ended without failing
     }
 }

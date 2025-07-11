@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {IToken} from "./interfaces/IToken.sol";
 import {IPermit2} from "./interfaces/IPermit2.sol";
 import {IBalancerRouter} from "./interfaces/IBalancerRouter.sol";
+import {IBalancerVaultAdmin} from "./interfaces/IBalancerVaultAdmin.sol";
 
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
@@ -66,6 +67,8 @@ contract DerolasAuction {
     address public immutable incentiveTokenAddress;
     // Balancer router address
     address public immutable balancerRouter;
+    // Balancer vault address
+    address public immutable balancerVaultAdmin;
     // Pool ID
     address public immutable poolId;
     // Permit2 address
@@ -102,6 +105,7 @@ contract DerolasAuction {
     constructor(
         uint256 _minDonation,
         address _balancerRouter,
+        address _balancerVaultAdmin,
         address _poolId,
         uint256 _assetsInPool,
         address _incentiveTokenAddress,
@@ -111,6 +115,7 @@ contract DerolasAuction {
         uint256 _roundLength
     ) {
         balancerRouter = _balancerRouter;
+        balancerVaultAdmin = _balancerVaultAdmin;
         poolId = _poolId;
         assetsInPool = _assetsInPool;
         incentiveTokenAddress = _incentiveTokenAddress;
@@ -132,7 +137,10 @@ contract DerolasAuction {
         if (unclaimedAmount == 0) {
             return;
         }
-
+        uint256 minimumBalanceDonationAmount = IBalancerVaultAdmin(balancerVaultAdmin).getMinimumTradeAmount();
+        if (unclaimedAmount < minimumBalanceDonationAmount) {
+            return;
+        }
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[incentiveTokenIndex] = unclaimedAmount;
 
@@ -152,10 +160,10 @@ contract DerolasAuction {
         if (contributionAmount == 0) {
             return;
         }
-        // uint256 minimumTradeAmount = IBalancerVaultAdmin(balancerRouter).getMinimumTradeAmount();
-        // if (contributionAmount < minimumTradeAmount) {
-        //     return;
-        // }
+        uint256 minimumBalanceDonationAmount = IBalancerVaultAdmin(balancerVaultAdmin).getMinimumTradeAmount();
+        if (contributionAmount < minimumBalanceDonationAmount) {
+            return;
+        }
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[wethIndex] = contributionAmount;
         IBalancerRouter(balancerRouter).donate{value: contributionAmount}(poolId, amountsIn, true, "");
