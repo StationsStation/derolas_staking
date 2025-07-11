@@ -51,14 +51,17 @@ contract DerolasAuction {
         uint256 indexed totalRoundClaimed,
         uint256 availableRewards
     );
-    event UnclaimedRewardsDonated(uint256 indexed amount);
+    event UnclaimedIncentiveTokensDonated(uint256 indexed amount);
     event RewardsClaimed(address indexed donatorAddress, uint256 indexed amount);
     event ParamsUpdated(uint256 indexed nextRound, uint256 availableRewards, uint256 roundLength, uint256 minDonation);
+    event EthDonatedToBalancer(uint256 indexed amount);
 
     // Assets in pool
     uint256 public immutable assetsInPool;
     // Incentive token index
     uint256 public immutable incentiveTokenIndex;
+    // Incentive token index for WETH
+    uint256 public immutable wethIndex;
     // Incentive token address
     address public immutable incentiveTokenAddress;
     // Balancer router address
@@ -103,6 +106,7 @@ contract DerolasAuction {
         uint256 _assetsInPool,
         address _incentiveTokenAddress,
         uint256 _incentiveTokenIndex,
+        uint256 _wethIndex,
         uint256 _availableRewards,
         uint256 _roundLength
     ) {
@@ -111,6 +115,7 @@ contract DerolasAuction {
         assetsInPool = _assetsInPool;
         incentiveTokenAddress = _incentiveTokenAddress;
         incentiveTokenIndex = _incentiveTokenIndex;
+        wethIndex = _wethIndex;
         permit2 = IBalancerRouter(_balancerRouter).getPermit2();
         roundPoints[1].availableRewards = _availableRewards;
         roundPoints[1].length = _roundLength;
@@ -122,7 +127,7 @@ contract DerolasAuction {
 
     /// @dev Donates unclaimed rewards.
     /// @param claimRound Claim round.
-    function _donateUnclaimedRewards(uint256 claimRound) internal {
+    function _donateUnclaimedIncentiveTokens(uint256 claimRound) internal {
         uint256 unclaimedAmount = roundPoints[claimRound].availableRewards - roundPoints[claimRound].totalClaimed;
         if (unclaimedAmount == 0) {
             return;
@@ -138,7 +143,23 @@ contract DerolasAuction {
         );
         IBalancerRouter(balancerRouter).donate(poolId, amountsIn, true, "");
 
-        emit UnclaimedRewardsDonated(unclaimedAmount);
+        emit UnclaimedIncentiveTokensDonated(unclaimedAmount);
+    }
+
+    function _donateEthContribution() internal {
+        // we check the whole balance of the contract and donate it to the balancer pool
+        uint256 contributionAmount = address(this).balance;
+        if (contributionAmount == 0) {
+            return;
+        }
+        // uint256 minimumTradeAmount = IBalancerVaultAdmin(balancerRouter).getMinimumTradeAmount();
+        // if (contributionAmount < minimumTradeAmount) {
+        //     return;
+        // }
+        uint256[] memory amountsIn = new uint256[](assetsInPool);
+        amountsIn[wethIndex] = contributionAmount;
+        IBalancerRouter(balancerRouter).donate{value: contributionAmount}(poolId, amountsIn, true, "");
+        emit EthDonatedToBalancer(contributionAmount);
     }
 
     /// @dev Ends an round.
@@ -151,7 +172,8 @@ contract DerolasAuction {
         uint256 claimRound = curRound - 1;
         require(block.number > roundPoints[claimRound].endBlock + roundPoints[curRound].length, "Round not over");
 
-        _donateUnclaimedRewards(claimRound);
+        _donateUnclaimedIncentiveTokens(claimRound);
+        _donateEthContribution();
 
         uint256 nextRound = curRound + 1;
 

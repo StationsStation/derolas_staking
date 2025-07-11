@@ -15,6 +15,7 @@ contract TestDerolasAuctionContract is Test {
     uint256 public assetsInPool = 8;
     address public incentiveTokenAddress = 0x54330d28ca3357F294334BDC454a032e7f353416; // OLAS
     uint256 public incentiveTokenIndex = 3;
+    uint256 public wethIndex = 1; // WETH index in the pool
     uint256 public availableRewards = 1e18;
     uint256 public roundLength = 90; // blocks
 
@@ -30,6 +31,7 @@ contract TestDerolasAuctionContract is Test {
             assetsInPool,
             incentiveTokenAddress,
             incentiveTokenIndex,
+            wethIndex,
             availableRewards,
             roundLength
         );
