@@ -102,11 +102,11 @@ contract TestDerolasAuctionContract is Test {
         // Check that the estimated ticket percentage from a donation works correctly
         this.testTopupIncentivesBalance(); // Ensure incentives are topped up
         uint256 initialEstimatedPercentage = c.estimateTicketPercentage(minimumDonation);
-        assertEq(initialEstimatedPercentage, 1e18, "Estimated ticket percentage should be 100% as no donations exist yet");
+        assertEq(initialEstimatedPercentage, 1e18, "Estimated ticket percentage should be 100% as no donations yet");
         c.donate{value: minimumDonation}();
         uint256 finalEstimatedPercentage = c.estimateTicketPercentage(minimumDonation);
         assertEq(
-            finalEstimatedPercentage, 
+            finalEstimatedPercentage,
             initialEstimatedPercentage / 2,
             "Estimated ticket percentage should decrease after donation"
         );
