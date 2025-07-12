@@ -1,6 +1,7 @@
 {
   "contractVerification": true,
   "useLedger": false,
+  "keyName": "derolasDeployer",
   "derivationPath": "m/44'/60'/0'/0/0",
   "providerName": "base",
   "chainId": "8453",
@@ -22,5 +23,7 @@
   "safeMultisig": "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552",
   "fallbackHandler": "0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4",
   "agentId": "50",
-  "configHash": "0x0000000000000000000000000000000000000000000000000000000000000001"
+  "configHash": "0x0000000000000000000000000000000000000000000000000000000000000001",
+  "derolasAuctionAddress": "0xD02aeD829944050ecee4E4dEBCf111c816ef0451",
+  "stakingManagerAddress": "0xA8Cd2c99d0e70862078604AC29aa425455eCeE54"
 }
