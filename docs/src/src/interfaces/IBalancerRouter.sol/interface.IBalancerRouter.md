@@ -1,5 +1,5 @@
 # IBalancerRouter
-[Git Source](https://github.com/StationsStation/derolas_staking/blob/d97b6f149de1dc071c046d8ac57f88b8ed721406/src/interfaces/IBalancerRouter.sol)
+[Git Source](https://github.com/StationsStation/derolas_staking/blob/8bc08887a8e04569d108bb4c8a9f56cd69d8deaa/src/interfaces/IBalancerRouter.sol)
 
 Interface for interacting with Balancer's router contract
 
