@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Check if $1 is provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <network>"
+  echo "Example: $0 base"
+  exit 1
+fi
+
+# check if the ETHERSCAN_API_KEY is set
+if [ -z "$ETHERSCAN_API_KEY" ]; then
+  echo "Please set the ETHERSCAN_API_KEY environment variable."
+  exit 1
+fi
+
 red=$(tput setaf 1)
 green=$(tput setaf 2)
 reset=$(tput sgr0)
@@ -34,9 +47,19 @@ contractArgs="$contractPath --constructor-args $constructorArgs"
 if [ "$useLedger" == "true" ]; then
   walletArgs="-l --mnemonic-derivation-path $derivationPath"
   deployer=$(cast wallet address $walletArgs)
-else
+elif [ -f "$PRIVATE_KEY" ]; then
   echo "Using PRIVATE_KEY: ${PRIVATE_KEY:0:6}..."
   walletArgs="--private-key $PRIVATE_KEY"
+  deployer=$(cast wallet address $walletArgs)
+elif [ -f "$globals" ]; then
+  keyName=$(jq -r '.keyName' $globals)
+  if [ -z "$keyName" ]; then
+    echo "${red}!!! keyName is not set in $globals${reset}"
+    exit 0
+  fi
+  full=$(cast wallet dk "$keyName")
+  key="${full##* }"
+  walletArgs="--private-key $key"
   deployer=$(cast wallet address $walletArgs)
 fi
 
@@ -46,7 +69,7 @@ echo "RPC: $networkURL"
 echo "${green}Deployment of: $contractArgs${reset}"
 
 # Deploy the contract and capture the address
-execCmd="forge create --broadcast --rpc-url $networkURL$API_KEY $walletArgs $contractArgs"
+execCmd="forge create --out deployments/$1 --broadcast --rpc-url $networkURL$API_KEY $walletArgs $contractArgs"
 deploymentOutput=$($execCmd)
 stakingManagerAddress=$(echo "$deploymentOutput" | grep 'Deployed to:' | awk '{print $3}')
 
