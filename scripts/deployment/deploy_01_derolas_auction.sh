@@ -24,6 +24,7 @@ if [ ! -f $globals ]; then
   exit 0
 fi
 
+contractName="DerolasAuction"
 # Read variables using jq
 contractVerification=$(jq -r '.contractVerification' $globals)
 useLedger=$(jq -r '.useLedger' $globals)
@@ -87,8 +88,15 @@ if [ $outputLength != 42 ]; then
   exit 0
 fi
 
-# Write new deployed contract back into JSON
+
+# Write new deployed contract back into deployment file
 echo "$(jq '. += {"derolasAuctionAddress":"'$derolasAuctionAddress'"}' $globals)" > $globals
+
+# deployment json file
+deploymentJsonFile="deployments/$1/$contractName.sol/$contractName.json"
+echo "$(jq '. += {"address":"'$derolasAuctionAddress'"}' $deploymentJsonFile)" > $deploymentJsonFile
+
+
 
 # Verify contract
 if [ "$contractVerification" == "true" ]; then

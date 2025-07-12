@@ -39,6 +39,7 @@ fallbackHandler=$(jq -r '.fallbackHandler' $globals)
 agentId=$(jq -r '.agentId' $globals)
 configHash=$(jq -r '.configHash' $globals)
 
+contractName="StakingManager"
 contractPath="src/StakingManager.sol:StakingManager"
 constructorArgs="$serviceManager $olasAddress $stakingFactory $safeMultisig $fallbackHandler $agentId $configHash"
 contractArgs="$contractPath --constructor-args $constructorArgs"
@@ -84,6 +85,10 @@ fi
 
 # Write new deployed contract back into JSON
 echo "$(jq '. += {"stakingManagerAddress":"'$stakingManagerAddress'"}' $globals)" > $globals
+
+# deployment json file
+deploymentJsonFile="deployments/$1/$contractName.sol/$contractName.json"
+echo "$(jq '. += {"address":"'$stakingManagerAddress'"}' $deploymentJsonFile)" > $deploymentJsonFile
 
 # Verify contract
 if [ "$contractVerification" == "true" ]; then
