@@ -1,5 +1,5 @@
 # StakingManager
-[Git Source](https://github.com/StationsStation/derolas_staking/blob/8bc08887a8e04569d108bb4c8a9f56cd69d8deaa/src/StakingManager.sol)
+[Git Source](https://github.com/StationsStation/derolas_staking/blob/1fe30109e452572f612cc88e289dc698fe50d916/src/StakingManager.sol)
 
 **Inherits:**
 ERC721TokenReceiver

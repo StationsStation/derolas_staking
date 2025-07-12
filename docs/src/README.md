@@ -38,15 +38,15 @@ For example if there is a total of 5 donors who all donated `MinDonation` then t
 
 Another example would be where a single donor donates a disproportionally large amount compared to the minimum donation. Let us say that we have 3 donors who donate in the following proportions.
 
--- Donor A) 10
--- Donor B) 5
--- Donor C) 5
+- Donor A) 10
+- Donor B) 5
+- Donor C) 5
 
 The rewards would be distributed as so;
 
--- Donor A) receives 50%
--- Donor B) receives 25%
--- Donor C) receives 25%
+- Donor A) receives 50%
+- Donor B) receives 25%
+- Donor C) receives 25%
 
 Hence, Proportional Auction.
 
@@ -60,6 +60,8 @@ Note, this can lead to a case whereby all donors overpay for the rewards based o
     - Donations: All eth donated to participate within the auctions are donated to the balancer pool.
     - Unclaimed Incentive Tokens: Donors who DO NOT CLAIM in the round after they donate have their rewards swept into the pool.
 
+- One Donation per Auction: It is impossible for any agent to donate more than once per auction round. This is to ensure that the auction is fair and that no agent can dominate the auction by donating multiple times.
+
 ### Activity Checking & Olas Staking Ecosystem
 
 In the Olas ecosystem exists the concept of the Daily Active Agents.
@@ -71,7 +73,6 @@ This information is stored within the mapping `epochDonationActivities`.
 As per the standard Olas Daily Active Agent interface, this requires a isRatioPass for a single staker.
 
 Note, the design of the contracts allows the seperation of the auctions and the staking which enables auctions (occuring each 90 blocks by default) to run without impacting staking. I.e. in order for a service to be eligible for staknig rewards, it must participate in only 1 Aution each 24 hours.
-
 
 ## Getting Started
 
@@ -147,8 +148,3 @@ make lcov
 ```
 
 The coverage reports will be generated in the `coverage` directory. You can view the reports by opening the `index.html` file in a web browser.
-
-
-
-
-

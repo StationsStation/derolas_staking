@@ -1,5 +1,5 @@
 # SafeTransferLib
-[Git Source](https://github.com/StationsStation/derolas_staking/blob/8bc08887a8e04569d108bb4c8a9f56cd69d8deaa/src/libraries/SafeTransferLib.sol)
+[Git Source](https://github.com/StationsStation/derolas_staking/blob/1fe30109e452572f612cc88e289dc698fe50d916/src/libraries/SafeTransferLib.sol)
 
 *The implementation corrects SafeTransferLib.sol that was fully copied from autonolas-registries repository:
 https://github.com/valory-xyz/autonolas-registries/blob/main/contracts/utils/SafeTransferLib.sol,
