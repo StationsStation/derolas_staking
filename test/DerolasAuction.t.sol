@@ -185,6 +185,19 @@ contract TestDerolasAuctionContract is Test {
         );
     }
 
+    function testImportantParamsCarriedOver() public {
+        // Check that important parameters are carried over to the next round
+        GameState memory gameState = c.getGameState(address(this));
+        assertEq(gameState.roundRewards, availableRewards, "Available rewards should match");
+        assertEq(gameState.roundLength, roundLength, "Round length should match");
+        assertEq(gameState.minimumDonation, minimumDonation, "Minimum donation should match");
+        testCanEndRound();
+        GameState memory nextGameState = c.getGameState(address(this));
+        assertEq(nextGameState.roundRewards, gameState.roundRewards, "Available rewards should be carried over");
+        assertEq(nextGameState.roundLength, gameState.roundLength, "Round length should be carried over");
+        assertEq(nextGameState.minimumDonation, gameState.minimumDonation, "Minimum donation should be carried over");
+    }
+
     function testCannotEndRoundEarly() public {
         // Check that the round cannot be ended early
         vm.expectRevert("Round not over");

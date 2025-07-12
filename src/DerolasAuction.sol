@@ -190,6 +190,9 @@ contract DerolasAuction {
         if (!paramsUpdateRequested) {
             roundPoints[nextRound].availableRewards = roundPoints[curRound].availableRewards;
             roundPoints[nextRound].length = roundPoints[curRound].length;
+            roundPoints[nextRound].minDonation = roundPoints[curRound].minDonation;
+        } else {
+            paramsUpdateRequested = false;
         }
 
         roundPoints[curRound].endBlock = block.number;
