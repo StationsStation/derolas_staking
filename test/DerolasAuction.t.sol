@@ -305,25 +305,25 @@ contract TestDerolasAuctionContract is Test {
         this.testChangeParams(); // Ensure parameters are set
     }
 
-    function testCanRecoverIncentiveBalance() public {
-        // Check that the owner can recover incentives
-        vm.expectRevert("No incentive token balance to recover");
-        c.recoverIncentiveTokenBalance();
+    function testCanWithdrawIncentiveBalance() public {
+        // Check that the owner can withdraw incentives
+        vm.expectRevert("No incentive token balance to withdraw");
+        c.withdrawIncentiveTokenBalance();
 
         this.testTopupIncentivesBalance(); // Ensure incentives are topped up
         uint256 initialBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
-        assertEq(initialBalance, 0, "Initial balance should be zero before recovery");
-        c.recoverIncentiveTokenBalance();
+        assertEq(initialBalance, 0, "Initial balance should be zero before withdrawy");
+        c.withdrawIncentiveTokenBalance();
         uint256 finalBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
         assertGt(finalBalance, 0, "Final balance should be greater than zero after recovering incentives");
     }
 
-    function testCannotRecoverIncentiveBalanceWithoutPermission() public {
-        // Check that a non-owner cannot recover incentives
+    function testCannotWithdrawIncentiveBalanceWithoutPermission() public {
+        // Check that a non-owner cannot withdraw incentives
         this.testTopupIncentivesBalance(); // Ensure incentives are topped up
         this.testCanChangeOwner(); // Ensure the owner is set
         vm.expectRevert("Unauthorized account");
-        c.recoverIncentiveTokenBalance(); // Attempt to recover incentives
+        c.withdrawIncentiveTokenBalance(); // Attempt to withdraw incentives
     }
 
     // edge case tests
