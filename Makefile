@@ -42,4 +42,8 @@ lcov:
 ci:
 	act
 
+doc:
+	forge doc
+	forge doc --serve --hostname 0.0.0.0 --port 4000
+
 all: fmt lint build tests
