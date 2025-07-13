@@ -375,13 +375,6 @@ contract DerolasAuction {
         return (blocksSinceRoundEnd * 100) / curRoundLength;
     }
 
-    /// @dev Gets total unclaimed rewards.
-    /// @return Total unclaimed rewards.
-    function getTotalUnclaimed() external view returns (uint256) {
-        uint256 claimRound = currentRound - 1;
-        return roundPoints[claimRound].availableRewards - roundPoints[claimRound].totalClaimed;
-    }
-
     /// @param user User address.
     /// @return state game state.
     function getGameState(address user) external view returns (GameState memory state) {
