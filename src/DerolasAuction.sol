@@ -136,13 +136,13 @@ contract DerolasAuction {
         owner = msg.sender;
     }
 
-    /// @dev Donates unclaimed rewards.
+    /// @dev Donates unclaimed rewards from the round prior to the claim round.
     /// @param claimRound Claim round.
     function _donateUnclaimedIncentiveTokens(uint256 claimRound) internal {
-        uint256 unclaimedAmount = roundPoints[claimRound].availableRewards - roundPoints[claimRound].totalClaimed;
-        if (unclaimedAmount < MINIMUM_BALANCE_DONATION_AMOUNT) {
-            return;
-        }
+        if (!_shouldDonateUnclaimedIncentives(claimRound)) return;
+
+        uint256 unclaimedAmount =
+            roundPoints[claimRound - 1].availableRewards - roundPoints[claimRound - 1].totalClaimed;
 
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[incentiveTokenIndex] = unclaimedAmount;
@@ -156,6 +156,18 @@ contract DerolasAuction {
         IBalancerRouter(balancerRouter).donate(poolId, amountsIn, true, "");
 
         emit UnclaimedIncentiveTokensDonated(unclaimedAmount);
+    }
+
+    /// @dev Checks if unclaimed incentives should be donated.
+    /// @param claimRound Claim round.
+    /// @return True if unclaimed incentives should be donated, false otherwise.
+    function _shouldDonateUnclaimedIncentives(uint256 claimRound) internal view returns (bool) {
+        if (claimRound == 0) return false; // No previous round to sweep
+        uint256 sweepRound = claimRound - 1;
+        if (roundPoints[sweepRound].totalDonated == 0) return false; // No donations in the previous round
+        uint256 unclaimedAmount = roundPoints[sweepRound].availableRewards - roundPoints[sweepRound].totalClaimed;
+        if (unclaimedAmount < MINIMUM_BALANCE_DONATION_AMOUNT) return false; // Unclaimed amount is too small
+        return true; // Unclaimed incentives should be donated
     }
 
     /// @dev Donates collected contributions.
