@@ -90,6 +90,9 @@ echo "$(jq '. += {"stakingManagerAddress":"'$stakingManagerAddress'"}' $globals)
 deploymentJsonFile="deployments/$1/$contractName.sol/$contractName.json"
 echo "$(jq '. += {"address":"'$stakingManagerAddress'"}' $deploymentJsonFile)" > $deploymentJsonFile
 
+find deployments/base -mindepth 1 -maxdepth 1 -type d ! -name 'DerolasAuction.sol' ! -name 'StakingManager.sol' -exec rm -rf {} +
+find deployments/base -type f -name '*.abi.json' -delete
+
 # Verify contract
 if [ "$contractVerification" == "true" ]; then
   contractParams="$stakingManagerAddress $contractPath --constructor-args $(cast abi-encode "constructor(address,address,address,address,address,uint256,bytes32)" $constructorArgs)"
