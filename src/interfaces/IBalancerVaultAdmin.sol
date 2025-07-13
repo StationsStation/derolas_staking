@@ -8,4 +8,7 @@ interface IBalancerVaultAdmin {
     /// @return minimumTradeAmount The minimum trade amount.
     /// This is used to ensure that trades do not occur below a certain threshold.
     function getMinimumTradeAmount() external view returns (uint256);
+    /// @dev Gets the balancer vault address.
+    /// @return balancerVault The address of the Balancer vault.
+    function vault() external view returns (address balancerVault);
 }

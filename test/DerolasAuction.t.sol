@@ -24,6 +24,7 @@ contract TestDerolasAuctionContract is Test {
     // Test parameters
     address public whaleAddress = 0xC8F7030a4e25585624e2Fc792255a547255Cd77c;
     uint256 public topUpAmount = 2e18; // 2 Incentive Token
+    address public wethAddress = 0x4200000000000000000000000000000000000006; // WETH address on Base
 
     function setUp() public {
         c = new DerolasAuction(
@@ -262,6 +263,36 @@ contract TestDerolasAuctionContract is Test {
         uint256[] memory updatedNonce = c.getMultisigNonces(address(this));
         assertEq(updatedNonce[0], initialNonce[0] + minimumDonation, "Nonce should increment by 1");
         assertTrue(c.isRatioPass(updatedNonce, initialNonce, 0), "isRatioPass should return true after increment");
+    }
+
+    // Balancer donation tests.
+    function testBalancerEthDonation() public {
+        // Check that a donation can be made using Balancer's ETH donation method
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        this.testDonateWithIncentives(); // Ensure a donation has been made
+        IBalancerVaultAdmin balancerVaultAdminContract = IBalancerVaultAdmin(balancerVaultAdmin);
+        uint256 initialBalance = IToken(wethAddress).balanceOf(balancerVaultAdminContract.vault());
+        this.testCanEndRound(); // Ensure the round can be ended
+        uint256 finalBalance = IToken(wethAddress).balanceOf(balancerVaultAdminContract.vault());
+        assertEq(
+            finalBalance,
+            initialBalance + minimumDonation,
+            "Final balance should be greater than initial balance after donation"
+        );
+    }
+
+    function testBalancerUnclaimedIncentiveDonation() public {
+        // Check that a donation can be made using Balancer's ETH donation method
+        IBalancerVaultAdmin balancerVaultAdminContract = IBalancerVaultAdmin(balancerVaultAdmin);
+        uint256 initialBalance = IToken(incentiveTokenAddress).balanceOf(balancerVaultAdminContract.vault());
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        this.testDonateWithIncentives(); // Ensure a donation has been made
+        this.testCanEndRound(); // Ensure the round can be ended
+        uint256 secondBalance = IToken(incentiveTokenAddress).balanceOf(balancerVaultAdminContract.vault());
+        assertEq(secondBalance, initialBalance, "Vault balance equal to initial balance after 1st round");
+        this.testCanEndRound(); // Ensure the round can be ended again
+        uint256 finalBalance = IToken(incentiveTokenAddress).balanceOf(balancerVaultAdminContract.vault());
+        assertEq(finalBalance, initialBalance + availableRewards, "Final balance should include unclaimed");
     }
 
     // admin tests
