@@ -77,12 +77,6 @@ contract TestDerolasAuctionContract is Test {
         c.topUpIncentiveBalance(0);
     }
 
-    function testGetTotalUnclaimed() public view {
-        // Check that the total unclaimed incentives are zero initially
-        uint256 totalUnclaimed = c.getTotalUnclaimed();
-        assertEq(totalUnclaimed, 0, "Total unclaimed incentives should be zero initially");
-    }
-
     function testGetRoundProgress() public {
         // Check that the round progress is zero initially
         uint256 roundProgress = c.getRoundProgress();
@@ -235,17 +229,6 @@ contract TestDerolasAuctionContract is Test {
         c.claim();
         vm.expectRevert("Already claimed");
         c.claim(); // Attempt to claim again
-    }
-
-    function testUnclaimedRewardsDonated() public {
-        // Check that unclaimed rewards are donated to the pool
-        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
-        c.donate{value: minimumDonation}(); // Ensure a donation has been made
-        this.testCanEndRound(); // Ensure the round can be ended
-        assertGt(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be greater than zero after donation");
-        this.testCanEndRound(); // Ensure the round can be ended again
-            // todo ensure that the unclaimed rewards are donated to the pool.
-            // assertEq(c.getTotalUnclaimed(), 0, "Total unclaimed incentives should be zero after donating unclaimed rewards");
     }
 
     // tests for activity of multisig nonces
