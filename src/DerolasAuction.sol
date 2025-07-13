@@ -311,6 +311,7 @@ contract DerolasAuction {
         );
 
         require(roundToDonations[curRound][msg.sender] == 0, "Already donated this round");
+        require(getRemainingRoundLength() > 0, "Round has ended");
 
         roundPoints[curRound].totalDonated += msg.value;
         roundToDonations[curRound][msg.sender] = msg.value;

@@ -408,4 +408,13 @@ contract TestDerolasAuctionContract is Test {
         assertLt(address(c).balance, minimumTradeAmount, "Contract should have less than minimum trade amount in ETH");
         this.testCanEndRound(); // Ensure the round can be ended without failing
     }
+
+    function testCannotDonateAfterRoundEnd() public {
+        // Check that a user cannot donate after the round has ended
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        // fast-forward to the block after the round length
+        vm.roll(block.number + roundLength + 1);
+        vm.expectRevert("Round has ended");
+        c.donate{value: minimumDonation}(); // Attempt to donate after round end
+    }
 }
