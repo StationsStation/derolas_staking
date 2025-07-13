@@ -140,7 +140,8 @@ contract DerolasAuction {
     /// @param claimRound Claim round.
     function _donateUnclaimedIncentiveTokens(uint256 claimRound) internal {
         uint256 unclaimedAmount = roundPoints[claimRound].availableRewards - roundPoints[claimRound].totalClaimed;
-        if (unclaimedAmount < MINIMUM_BALANCE_DONATION_AMOUNT) {
+        uint256 totalRoundDonations = roundPoints[claimRound].totalDonated;
+        if (unclaimedAmount < MINIMUM_BALANCE_DONATION_AMOUNT || totalRoundDonations == 0) {
             return;
         }
 
