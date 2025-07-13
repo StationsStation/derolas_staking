@@ -274,7 +274,25 @@ contract TestDerolasAuctionContract is Test {
         uint256 initialBalance = IToken(wethAddress).balanceOf(balancerVaultAdminContract.vault());
         this.testCanEndRound(); // Ensure the round can be ended
         uint256 finalBalance = IToken(wethAddress).balanceOf(balancerVaultAdminContract.vault());
-        assertGt(finalBalance, initialBalance, "Final balance should be greater than initial balance after donation");
+        assertEq(
+            finalBalance,
+            initialBalance + minimumDonation,
+            "Final balance should be greater than initial balance after donation"
+        );
+    }
+
+    function testBalancerUnclaimedIncentiveDonation() public {
+        // Check that a donation can be made using Balancer's ETH donation method
+        IBalancerVaultAdmin balancerVaultAdminContract = IBalancerVaultAdmin(balancerVaultAdmin);
+        uint256 initialBalance = IToken(incentiveTokenAddress).balanceOf(balancerVaultAdminContract.vault());
+        this.testTopupIncentivesBalance(); // Ensure incentives are topped up
+        this.testDonateWithIncentives(); // Ensure a donation has been made
+        this.testCanEndRound(); // Ensure the round can be ended
+        uint256 secondBalance = IToken(incentiveTokenAddress).balanceOf(balancerVaultAdminContract.vault());
+        assertEq(secondBalance, initialBalance, "Vault balance equal to initial balance after 1st round");
+        this.testCanEndRound(); // Ensure the round can be ended again
+        uint256 finalBalance = IToken(incentiveTokenAddress).balanceOf(balancerVaultAdminContract.vault());
+        assertEq(finalBalance, initialBalance + availableRewards, "Final balance should include unclaimed");
     }
 
     // admin tests
