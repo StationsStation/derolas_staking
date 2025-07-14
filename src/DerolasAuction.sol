@@ -445,7 +445,4 @@ contract DerolasAuction {
             ratioPass = true;
         }
     }
-
-    /// @dev Receive function.
-    receive() external payable {}
 }
