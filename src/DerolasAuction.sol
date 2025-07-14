@@ -46,6 +46,7 @@ contract DerolasAuction {
     event OwnerUpdated(address indexed owner);
     event DonationReceived(address indexed donatorAddress, uint256 indexed amount);
     event TopUpIncentiveReceived(uint256 indexed amount);
+    event TopUpIncentiveWithdrawn(uint256 indexed amount);
     event AuctionEnded(
         uint256 indexed roundCounter,
         uint256 indexed totalRoundDonations,
@@ -420,6 +421,7 @@ contract DerolasAuction {
         uint256 incentiveBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
         require(incentiveBalance > 0, "No incentive token balance to withdraw");
         SafeTransferLib.safeTransfer(incentiveTokenAddress, owner, incentiveBalance);
+        emit TopUpIncentiveWithdrawn(incentiveBalance);
     }
 
     /// @dev Gets service multisig nonces.
