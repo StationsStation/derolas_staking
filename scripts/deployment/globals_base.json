@@ -9,10 +9,10 @@
   "blockscoutURL": "https://base.blockscout.com",
   "gasPriceInGwei": "2",
   "olasAddress": "0x54330d28ca3357F294334BDC454a032e7f353416",
-  "minDonation": "1000000000000000",
+  "minDonation": "10000000000000",
   "balancerRouter": "0x3f170631ed9821Ca51A59D996aB095162438DC10",
   "balancerVaultAdmin": "0x35fFB749B273bEb20F40f35EdeB805012C539864",
-  "poolId": "0xaF5B7999F491C42C05B5a2CA80f1d200D617cC8c",
+  "poolId": "0x7b4c560f33A71A9f7a500aF3C4c65b46fBBafdB7",
   "assetsInPool": "8",
   "incentiveTokenIndex": "3",
   "wethIndex": "1",
@@ -24,6 +24,6 @@
   "fallbackHandler": "0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4",
   "agentId": "50",
   "configHash": "0x0000000000000000000000000000000000000000000000000000000000000001",
-  "derolasAuctionAddress": "0x8e35cEdF3F1fb7495dB516713F844Ad2DF59b5B7",
+  "derolasAuctionAddress": "0x89a6b53F170d351FF5686D378159aF7BAE046dFb",
   "stakingManagerAddress": "0xA8Cd2c99d0e70862078604AC29aa425455eCeE54"
 }

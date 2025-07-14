@@ -95,6 +95,10 @@ echo "$(jq '. += {"derolasAuctionAddress":"'$derolasAuctionAddress'"}' $globals)
 # deployment json file
 deploymentJsonFile="deployments/$1/$contractName.sol/$contractName.json"
 echo "$(jq '. += {"address":"'$derolasAuctionAddress'"}' $deploymentJsonFile)" > $deploymentJsonFile
+# write dummy bytecode  
+bytecode=$(jq -r '.bytecode.object' "$deploymentJsonFile")
+jq --arg bytecode "$bytecode" '. += {bytecode: $bytecode}' "$deploymentJsonFile" > tmpfile && mv tmpfile "$deploymentJsonFile"
+
 
 find deployments/base -mindepth 1 -maxdepth 1 -type d ! -name 'DerolasAuction.sol' ! -name 'StakingManager.sol' -exec rm -rf {} +
 find deployments/base -type f -name '*.abi.json' -delete
