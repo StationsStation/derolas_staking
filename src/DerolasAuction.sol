@@ -307,8 +307,10 @@ contract DerolasAuction {
 
         uint256 curRound = currentRound;
         require(msg.value >= roundPoints[curRound].minDonation, "Donation amount is less than the minimum donation");
+        uint256 allocatedRewards = this.getAllocatedIncentives();
         require(
-            IToken(incentiveTokenAddress).balanceOf(address(this)) >= roundPoints[curRound].availableRewards,
+            IToken(incentiveTokenAddress).balanceOf(address(this))
+                >= roundPoints[curRound].availableRewards + allocatedRewards,
             "Not enough rewards to play the game"
         );
 
@@ -417,11 +419,33 @@ contract DerolasAuction {
     /// @dev withdraws the incentive token balance.
     /// @notice This function allows the owner to withdraw the incentive token balance from the contract.
     function withdrawIncentiveTokenBalance() external {
+        if (_locked != 1) {
+            revert("ReentrancyGuard");
+        }
+        _locked = 2;
+        // check what is promised to participants in the current round and the claim round
+        uint256 allocatedRewards = this.getAllocatedIncentives();
+
         require(msg.sender == owner, "Unauthorized account");
-        uint256 incentiveBalance = IToken(incentiveTokenAddress).balanceOf(address(this));
+        uint256 incentiveBalance = IToken(incentiveTokenAddress).balanceOf(address(this)) - allocatedRewards;
         require(incentiveBalance > 0, "No incentive token balance to withdraw");
         SafeTransferLib.safeTransfer(incentiveTokenAddress, owner, incentiveBalance);
         emit TopUpIncentiveWithdrawn(incentiveBalance);
+        _locked = 1;
+    }
+
+    /// @dev gets allocated Incentives
+    /// @return allocatedRewards Allocated rewards.
+    function getAllocatedIncentives() external view returns (uint256 allocatedRewards) {
+        uint256 curRound = currentRound;
+        uint256 claimRound = curRound - 1;
+
+        if (roundPoints[claimRound].totalDonated > 0) {
+            allocatedRewards += roundPoints[claimRound].availableRewards;
+        }
+        if (roundPoints[curRound].totalDonated > 0) {
+            allocatedRewards += roundPoints[curRound].availableRewards;
+        }
     }
 
     /// @dev Gets service multisig nonces.
