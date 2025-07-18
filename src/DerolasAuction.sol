@@ -277,9 +277,11 @@ contract DerolasAuction {
         }
 
         // Calculate rewards
-        uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
+
         uint256 claimedAmount = roundToClaimed[claimRound][account];
-        return amount - claimedAmount;
+        if (claimedAmount > 0) return 0; // Already claimed
+        uint256 amount = (donation * roundPoints[claimRound].availableRewards) / totalRoundDonations;
+        return amount;
     }
 
     /// @dev Estimates ticket percentage.
