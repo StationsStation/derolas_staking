@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {DerolasAuction, GameState} from "src/DerolasAuction.sol";
+import {DerolasAuction, GameState, NoAvailableIncentiveBalance} from "src/DerolasAuction.sol";
 import {IToken} from "src/interfaces/IToken.sol";
 import {IBalancerVaultAdmin} from "src/interfaces/IBalancerVaultAdmin.sol";
 
@@ -321,7 +321,7 @@ contract TestDerolasAuctionContract is Test {
 
     function testCanWithdrawIncentiveBalance() public {
         // Check that the owner can withdraw incentives
-        vm.expectRevert("No incentive token balance to withdraw");
+        vm.expectRevert(NoAvailableIncentiveBalance.selector);
         c.withdrawIncentiveTokenBalance();
 
         this.testTopupIncentivesBalance(); // Ensure incentives are topped up

@@ -8,6 +8,8 @@ import {IBalancerVaultAdmin} from "./interfaces/IBalancerVaultAdmin.sol";
 
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
+error NoAvailableIncentiveBalance();
+
 /// @dev Round point struct.
 /// @notice Stores information about a specific round
 struct RoundPoint {
@@ -419,16 +421,14 @@ contract DerolasAuction {
     /// @dev withdraws the incentive token balance.
     /// @notice This function allows the owner to withdraw the incentive token balance from the contract.
     function withdrawIncentiveTokenBalance() external {
-        if (_locked != 1) {
-            revert("ReentrancyGuard");
-        }
+        require(_locked == 1, "ReentrancyGuard");
         _locked = 2;
         // check what is promised to participants in the current round and the claim round
         uint256 allocatedRewards = this.getAllocatedIncentives();
 
         require(msg.sender == owner, "Unauthorized account");
         uint256 incentiveBalance = IToken(incentiveTokenAddress).balanceOf(address(this)) - allocatedRewards;
-        require(incentiveBalance > 0, "No incentive token balance to withdraw");
+        if (incentiveBalance == 0) revert NoAvailableIncentiveBalance();
         SafeTransferLib.safeTransfer(incentiveTokenAddress, owner, incentiveBalance);
         emit TopUpIncentiveWithdrawn(incentiveBalance);
         _locked = 1;
