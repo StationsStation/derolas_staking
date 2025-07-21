@@ -11,6 +11,8 @@ pkgs.mkShell {
     pkgs.foundry 
     pkgs.act
     pkgs.lcov
+    pkgs.python3
+    pkgs.poetry
   ];
 }
 
