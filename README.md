@@ -148,3 +148,12 @@ make lcov
 ```
 
 The coverage reports will be generated in the `coverage` directory. You can view the reports by opening the `index.html` file in a web browser.
+
+
+### Releasing
+To release a new version of the project, you can use the following command:
+
+```bash
+export NEW_VERSION=0.1.0 # Set the new version number
+poetry run tbump $NEW_VERSION
+```
