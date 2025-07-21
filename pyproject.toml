@@ -1,6 +1,6 @@
 [project]
 name = "derolas-staking"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = [
     {name = "8baller",email = "8baller@station.codes"}
@@ -24,7 +24,7 @@ build-backend = "poetry.core.masonry.api"
 # github_url = "https://github.com/<user or organization>/<project>/"
 
 [tool.tbump.version]
-current = "0.1.0"
+current = "0.1.1"
 
 # Example of a semver regexp.
 # Make sure this matches current_version before
