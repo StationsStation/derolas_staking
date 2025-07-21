@@ -44,7 +44,7 @@ tag_template = "v{new_version}"
 
 [[tool.tbump.after_push]]
 name = "create release"
-cmd="gh release create v{new_version} --title v{new_version}"
+cmd="gh release create v{new_version} --title v{new_version} --notes 'Automated release' --draft=false --prerelease=false"
 
 # For each file to patch, add a [[tool.tbump.file]] config
 # section containing the path of the file, relative to the
