@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {IToken} from "./interfaces/IToken.sol";
 import {IPermit2} from "./interfaces/IPermit2.sol";
-import {IBalancerRouter} from "./interfaces/IBalancerRouter.sol";
+import {IBalancerRouterLegacy} from "./interfaces/IBalancerRouterLegacy.sol";
 import {IBalancerVaultAdmin} from "./interfaces/IBalancerVaultAdmin.sol";
 
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
@@ -127,7 +127,7 @@ contract DerolasAuction {
         wethIndex = _wethIndex;
 
         MINIMUM_BALANCE_DONATION_AMOUNT = IBalancerVaultAdmin(balancerVaultAdmin).getMinimumTradeAmount();
-        permit2 = IBalancerRouter(_balancerRouter).getPermit2();
+        permit2 = IBalancerRouterLegacy(_balancerRouter).getPermit2();
 
         roundPoints[1].availableRewards = _availableRewards;
         roundPoints[1].length = _roundLength;
@@ -155,7 +155,7 @@ contract DerolasAuction {
             incentiveTokenAddress, balancerRouter, uint160(unclaimedAmount), uint48(block.timestamp + 1 days)
         );
 
-        IBalancerRouter(balancerRouter).donate(poolId, amountsIn, true, "");
+        IBalancerRouterLegacy(balancerRouter).donate(poolId, amountsIn, true, "");
 
         emit UnclaimedIncentiveTokensDonated(unclaimedAmount);
     }
@@ -170,7 +170,7 @@ contract DerolasAuction {
 
         uint256[] memory amountsIn = new uint256[](assetsInPool);
         amountsIn[wethIndex] = contributionAmount;
-        IBalancerRouter(balancerRouter).donate{value: contributionAmount}(poolId, amountsIn, true, "");
+        IBalancerRouterLegacy(balancerRouter).donate{value: contributionAmount}(poolId, amountsIn, true, "");
         emit EthDonatedToBalancer(contributionAmount);
     }
 

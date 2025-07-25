@@ -1,17 +1,36 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.0;
 
-/// @title Balancer Router Interface
-/// @notice Interface for interacting with Balancer's router contract
 interface IBalancerRouter {
-    /// @dev Donates tokens to a pool.
-    /// @param pool Pool address.
-    /// @param amountsIn Amounts of tokens to donate.
-    /// @param wethIsEth Whether WETH is ETH.
-    /// @param userData User data.
-    function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
+    struct SingleSwap {
+        bytes32 poolId;
+        uint256 kind;
+        address assetIn;
+        address assetOut;
+        uint256 amount;
+        bytes userData;
+    }
 
-    /// @dev Gets permit2 address.
-    /// @return permit2 address.
-    function getPermit2() external view returns (address);
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address payable recipient;
+        bool toInternalBalance;
+    }
+
+    function swap(
+        SingleSwap memory singleSwap,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable returns (uint256 amountCalculated);
+
+    function batchSwap(
+        uint256 kind,
+        SingleSwap[] memory swaps,
+        address[] memory assets,
+        FundManagement memory funds,
+        int256[] memory limits,
+        uint256 deadline
+    ) external payable returns (int256[] memory);
 }
